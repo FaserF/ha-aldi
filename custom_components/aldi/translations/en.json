@@ -1,0 +1,35 @@
+{
+  "config": {
+    "flow_title": "Setup ALDI weekly offers",
+    "step": {
+      "user": {
+        "description": "Select the ALDI regions you want to track.",
+        "data": {
+          "region": "ALDI Region"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "ALDI weekly offers are already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure ALDI weekly offers",
+        "data": {
+          "update_interval": "Update Interval (hours, min 1, max 24)"
+        }
+      }
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "sued": "ALDI SÜD",
+        "nord": "ALDI NORD",
+        "both": "ALDI SÜD & ALDI NORD"
+      }
+    }
+  }
+}

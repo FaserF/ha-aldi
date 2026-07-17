@@ -1,0 +1,6 @@
+{
+  "name": "ALDI Discounts",
+  "hacs": "2.0.0",
+  "zip_release": true,
+  "filename": "aldi.zip"
+}

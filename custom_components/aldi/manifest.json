@@ -1,0 +1,14 @@
+{
+  "domain": "aldi",
+  "name": "ALDI Weekly Offers",
+  "codeowners": [
+    "@FaserF"
+  ],
+  "config_flow": true,
+  "diagnostics": true,
+  "documentation": "https://github.com/FaserF/ha-aldi",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/FaserF/ha-aldi/issues",
+  "requirements": [],
+  "version": "1.0.0"
+}
