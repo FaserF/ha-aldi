@@ -83,7 +83,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.region: str = config[CONF_REGION]
         self.config_entry = entry
 
-        self.store = storage.Store(hass, 1, f"{DOMAIN}_{self.region}")
+        self.store: storage.Store = storage.Store(hass, 1, f"{DOMAIN}_{self.region}")
         self._last_success: datetime.datetime | None = None
         self._backoff_until: datetime.datetime | None = None
         self._consecutive_failures = 0
