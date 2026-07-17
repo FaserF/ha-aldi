@@ -23,12 +23,10 @@ from .const import (
     ATTR_DISCOUNT_PRICE,
     ATTR_DISCOUNT_TITLE,
     ATTR_PICTURE,
-    ATTR_VALID_DATE,
     CONF_REGION,
     CONF_UPDATE_INTERVAL,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
-    MIN_UPDATE_INTERVAL,
     REGION_BOTH,
     REGION_NORD,
     REGION_SUED,
@@ -207,7 +205,9 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     except Exception as err:
                         _LOGGER.error("Failed to fetch ALDI SÜD data: %s", err)
                         if self.region == REGION_SUED:
-                            raise UpdateFailed(f"Failed to fetch ALDI SÜD: {err}") from err
+                            raise UpdateFailed(
+                                f"Failed to fetch ALDI SÜD: {err}"
+                            ) from err
 
                 # ALDI Nord
                 if self.region in (REGION_NORD, REGION_BOTH):
@@ -217,7 +217,9 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     except Exception as err:
                         _LOGGER.error("Failed to fetch ALDI NORD data: %s", err)
                         if self.region == REGION_NORD:
-                            raise UpdateFailed(f"Failed to fetch ALDI NORD: {err}") from err
+                            raise UpdateFailed(
+                                f"Failed to fetch ALDI NORD: {err}"
+                            ) from err
 
                 self._last_success = dt_util.now()
                 data["last_success"] = self._last_success.isoformat()
@@ -292,14 +294,16 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if i == num_pages:
                 pages.append(str(i))
             else:
-                pages.append(f"{i}-{i+1}")
+                pages.append(f"{i}-{i + 1}")
         if num_pages % 2 == 0 and num_pages > 1:
             pages.append(str(num_pages))
 
         # Fetch each hotspots_data.json
         discounts = []
         for page in pages:
-            page_url = f"https://prospekt.aldi-sued.de/{slug}/page/{page}/hotspots_data.json"
+            page_url = (
+                f"https://prospekt.aldi-sued.de/{slug}/page/{page}/hotspots_data.json"
+            )
             try:
                 hotspots = await self._request(session, page_url, return_json=True)
                 for h in hotspots:
@@ -314,7 +318,9 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             photos = prod.get("photoUrls", [])
                             if photos:
                                 photo_url = (
-                                    photos[0].get("full") or photos[0].get("thumb") or ""
+                                    photos[0].get("full")
+                                    or photos[0].get("thumb")
+                                    or ""
                                 )
                             if photo_url.startswith("/"):
                                 photo_url = f"https://prospekt.aldi-sued.de{photo_url}"
@@ -468,7 +474,9 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 valid_prices = []
                 for m in all_matches:
                     start_idx = m.start()
-                    pre_context = window_text[max(0, start_idx - 25) : start_idx].lower()
+                    pre_context = window_text[
+                        max(0, start_idx - 25) : start_idx
+                    ].lower()
                     if any(
                         x in pre_context
                         for x in [
@@ -485,7 +493,10 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     ):
                         continue
                     price_val = (
-                        m.group(0).replace(" ", "").replace("\u2009", "").replace(",", ".")
+                        m.group(0)
+                        .replace(" ", "")
+                        .replace("\u2009", "")
+                        .replace(",", ".")
                     )
                     valid_prices.append(price_val)
 

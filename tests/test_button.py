@@ -5,7 +5,13 @@ from unittest.mock import AsyncMock, MagicMock
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.aldi.const import DOMAIN, CONF_REGION, REGION_BOTH, REGION_SUED, REGION_NORD
+from custom_components.aldi.const import (
+    DOMAIN,
+    CONF_REGION,
+    REGION_BOTH,
+    REGION_SUED,
+    REGION_NORD,
+)
 from custom_components.aldi.button import async_setup_entry
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")

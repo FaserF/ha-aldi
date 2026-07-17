@@ -1,11 +1,16 @@
 """Test the ALDI weekly offers config flow."""
 
-from unittest.mock import patch
 import pytest
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
-from custom_components.aldi.const import DOMAIN, CONF_REGION, REGION_BOTH, REGION_SUED, CONF_UPDATE_INTERVAL
+from custom_components.aldi.const import (
+    DOMAIN,
+    CONF_REGION,
+    REGION_BOTH,
+    REGION_SUED,
+    CONF_UPDATE_INTERVAL,
+)
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 

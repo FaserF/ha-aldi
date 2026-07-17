@@ -1,16 +1,13 @@
 """Test the ALDI weekly offers coordinator."""
 
-import asyncio
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 import pytest
-import aiohttp
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.aldi.const import DOMAIN, CONF_REGION, REGION_BOTH, REGION_SUED, REGION_NORD
+from custom_components.aldi.const import DOMAIN, CONF_REGION, REGION_SUED, REGION_NORD
 from custom_components.aldi.coordinator import AldiDataUpdateCoordinator
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
@@ -44,9 +41,9 @@ async def test_coordinator_fetch_sued_success(hass: HomeAssistant) -> None:
                     "price": "1.99",
                     "discountedPrice": "1.49",
                     "photoUrls": [{"full": "/banana.png"}],
-                    "productType": "Obst & Gemüse"
+                    "productType": "Obst & Gemüse",
                 }
-            ]
+            ],
         }
     ]
 
@@ -66,10 +63,15 @@ async def test_coordinator_fetch_sued_success(hass: HomeAssistant) -> None:
         assert res["sued_valid_until"] == "13.7"
         assert res["sued_next_valid_until"] == "20.7"
         assert res["sued_preview_valid_until"] == "27.7"
-        assert len(res["sued_discounts"]) == 3 # 3 pages/spreads generated, each fetches hotspots
+        assert (
+            len(res["sued_discounts"]) == 3
+        )  # 3 pages/spreads generated, each fetches hotspots
         assert res["sued_discounts"][0]["product"] == "Bananen"
         assert res["sued_discounts"][0]["price"] == "1.49"
-        assert res["sued_discounts"][0]["picture_link"] == "https://prospekt.aldi-sued.de/banana.png"
+        assert (
+            res["sued_discounts"][0]["picture_link"]
+            == "https://prospekt.aldi-sued.de/banana.png"
+        )
 
 
 async def test_coordinator_fetch_nord_success(hass: HomeAssistant) -> None:
