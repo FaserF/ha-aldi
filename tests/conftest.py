@@ -3,6 +3,7 @@
 import sys
 import types
 import pytest
+import pytest_socket
 
 # Mock fcntl module for Windows compatibility during Home Assistant test initialization
 if sys.platform == "win32":
@@ -11,11 +12,9 @@ if sys.platform == "win32":
     fcntl.ioctl = lambda *args, **kwargs: 0  # type: ignore[attr-defined]
     sys.modules["fcntl"] = fcntl
 
-    # Also bypass pytest-socket on Windows to allow loopback socketpairs
-    import pytest_socket
-
-    pytest_socket.disable_socket = lambda *args, **kwargs: None
-    pytest_socket.enable_socket()
+# Bypass pytest-socket unconditionally to allow loopback sockets/socketpairs on all platforms
+pytest_socket.disable_socket = lambda *args, **kwargs: None
+pytest_socket.enable_socket()
 
 
 @pytest.fixture(autouse=True)
