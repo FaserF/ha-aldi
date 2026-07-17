@@ -5,7 +5,6 @@
     "@FaserF"
   ],
   "config_flow": true,
-  "diagnostics": true,
   "documentation": "https://github.com/FaserF/ha-aldi",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/FaserF/ha-aldi/issues",
