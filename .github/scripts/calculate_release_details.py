@@ -4,7 +4,6 @@ import json
 import os
 import re
 import subprocess
-from datetime import datetime
 
 
 def run_git(args):
@@ -246,9 +245,7 @@ def main():
     )
 
     prerelease_note = (
-        f"\n> [!{alert_type}]\n"
-        f"> **Release Risk: {severity}**\n"
-        f"> {preamble}\n"
+        f"\n> [!{alert_type}]\n> **Release Risk: {severity}**\n> {preamble}\n"
     )
 
     # Format release details markdown

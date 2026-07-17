@@ -4,7 +4,6 @@
 import argparse
 import re
 import subprocess
-import sys
 
 # Noise filter — commits matching ANY pattern are silently dropped
 NOISE_PATTERNS = [
@@ -402,7 +401,9 @@ def main():
         out.append("")
 
     if not has_any:
-        out.append(f"_No user-facing changes since the last release. Total commits: {total_raw}_")
+        out.append(
+            f"_No user-facing changes since the last release. Total commits: {total_raw}_"
+        )
 
     print("\n".join(out))
 
