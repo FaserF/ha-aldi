@@ -1,3 +1,4 @@
+---
 name: Release
 
 on:
@@ -12,6 +13,17 @@ on:
           - stable
           - beta
           - nightly
+
+      bump_level:
+        description: "Bump Level (SemVer only: major, minor, patch)"
+        required: false
+        default: "patch"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
       version_override:
         description: "Manually override new version (e.g. 1.2.3 or 2026.6.2b1). Leave empty to use automatic calculation."
         required: false
@@ -107,23 +119,11 @@ jobs:
           fi
 
       - name: Upload Updated Components
-
-
         uses: actions/upload-artifact@v7
-
-
         with:
-
-
           name: updated-components
-
-
           path: custom_components/
-
-
           retention-days: 1
-
-
 
       - name: Commit and Push
         run: |
@@ -138,7 +138,7 @@ jobs:
         with:
           name: release-body
 
-      - name: Update Draft Status
+      - name: Update Draft Status (Zipping Integration)
         shell: bash
         run: |
           cp release_body.md updated_draft_body.md
@@ -188,38 +188,11 @@ jobs:
         run: |
           git pull --rebase origin ${{ github.ref_name }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.14"
-
-      - name: Install dependencies for certificate extraction
-        run: |
-          pip install curl_cffi cryptography
-
-      - name: Download ALDI APK
-        run: |
-          python .github/scripts/fetch_aldi_apk.py aldi.apk
-
-      - name: Extract mTLS certificates
-        run: |
-          python .github/scripts/extract_aldi_certs.py aldi.apk custom_components/aldi/certs
-
       - name: Download Updated Components
-
-
         uses: actions/download-artifact@v8
-
-
         with:
-
-
           name: updated-components
-
-
           path: custom_components/
-
-
 
       - name: 📦 Zip Component
         run: |
@@ -240,14 +213,17 @@ jobs:
           IS_PRERELEASE: ${{ needs.versioning.outputs.is_prerelease }}
         shell: bash
         run: |
+          # Find existing draft release
           release_id=$(gh api "repos/$REPO/releases" --jq '.[] | select(.tag_name=="'$TAG'" or .name=="Release '$VERSION'") | select(.draft==true) | .id')
-          
+
+          # Set prerelease argument
           prerelease_arg=""
           if [ "$IS_PRERELEASE" = "true" ]; then
             prerelease_arg="--prerelease"
           fi
-          
+
           if [ -n "$release_id" ]; then
+            # Update the existing draft release to publish it
             gh api -X PATCH "repos/$REPO/releases/$release_id" \
               -f tag_name="$TAG" \
               -f target_commitish="${{ github.ref_name }}" \
@@ -255,9 +231,11 @@ jobs:
               -f body_path="release_body.md" \
               -F draft=false \
               -F prerelease=$( [ "$IS_PRERELEASE" = "true" ] && echo "true" || echo "false" )
-              
+
+            # Upload the assets to the published release
             gh release upload "$TAG" aldi.zip --clobber
           else
+            # Create a brand new release if no draft exists
             gh release create "$TAG" \
               --target "${{ github.ref_name }}" \
               --title "Release $VERSION" \
@@ -265,7 +243,7 @@ jobs:
               $prerelease_arg \
               aldi.zip
           fi
- 
+
       - name: Post-Release Dev Bump
         run: |
           git config --global user.name "github-actions[bot]"
@@ -289,7 +267,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      actions: write
     steps:
       - name: Delete Draft Release
         env:
@@ -304,8 +281,6 @@ jobs:
             gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
           fi
 
-
- 
       - name: Delete Component Artifact
         uses: actions/github-script@v9
         with:
