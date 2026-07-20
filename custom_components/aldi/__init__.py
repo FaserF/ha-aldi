@@ -97,10 +97,8 @@ async def _async_discover_region(hass: core.HomeAssistant) -> None:
         region_label = "ALDI SÜD"
 
     _LOGGER.debug(
-        "ALDI discovery: detected region '%s' (lat=%.4f, country=%s)",
+        "ALDI discovery: detected region '%s'",
         suggested_region,
-        ha_lat,
-        ha_country,
     )
 
     # Check if this specific region (or BOTH) is already configured
