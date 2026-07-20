@@ -21,6 +21,7 @@ async def test_sensors_setup(hass: HomeAssistant) -> None:
     entry.add_to_hass(hass)
 
     coordinator = MagicMock()
+    coordinator.country = "de"
     coordinator.region = REGION_BOTH
     coordinator.sued_current_url = "https://sued-url"
     coordinator.nord_current_url = "https://nord-url"
@@ -60,7 +61,8 @@ async def test_sensors_setup(hass: HomeAssistant) -> None:
 
     # Verify SÜD Current sensor (should filter out recipe)
     sued_current = created_sensors[0]
-    assert sued_current.name == "ALDI SÜD Offers"
+    assert sued_current._attr_name is None
+    assert sued_current.device_info["name"] == "ALDI SÜD Offers"
     assert sued_current.native_value == 1
     assert sued_current.extra_state_attributes["discounts"] == [
         {"product": "Sued Product", "price": "1.00", "base_price": "unit"}
@@ -70,7 +72,7 @@ async def test_sensors_setup(hass: HomeAssistant) -> None:
 
     # Verify SÜD Recipes Current sensor (should contain only recipe, default disabled)
     sued_recipes = created_sensors[3]
-    assert sued_recipes.name == "ALDI SÜD Recipes"
+    assert sued_recipes._attr_name == "Recipes"
     assert sued_recipes.entity_registry_enabled_default is False
     assert sued_recipes.native_value == 1
     assert sued_recipes.extra_state_attributes["discounts"] == [
@@ -83,7 +85,7 @@ async def test_sensors_setup(hass: HomeAssistant) -> None:
 
     # Verify NORD Next sensor (should filter out recipe)
     nord_next = created_sensors[7]  # index 7 is AldiNordNextSensor
-    assert nord_next.name == "ALDI NORD Offers Next"
+    assert nord_next._attr_name == "Next"
     assert nord_next.native_value == 1
     assert nord_next.extra_state_attributes["discounts"] == [
         {"product": "Nord Next Product", "price": "3.00", "base_price": "unit3"}
@@ -92,7 +94,7 @@ async def test_sensors_setup(hass: HomeAssistant) -> None:
 
     # Verify NORD Recipes Next sensor
     nord_recipes_next = created_sensors[10]  # index 10 is AldiNordRecipesNextSensor
-    assert nord_recipes_next.name == "ALDI NORD Recipes Next"
+    assert nord_recipes_next._attr_name == "Recipes Next"
     assert nord_recipes_next.entity_registry_enabled_default is False
     assert nord_recipes_next.native_value == 1
     assert nord_recipes_next.extra_state_attributes["discounts"] == [

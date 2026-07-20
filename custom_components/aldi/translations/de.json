@@ -1,8 +1,14 @@
 {
   "config": {
-    "flow_title": "ALDI Wochenangebote einrichten",
+    "flow_title": "ALDI/Hofer Wochenangebote einrichten",
     "step": {
       "user": {
+        "description": "Wählen Sie das Land für die Angebote aus, die Sie abonnieren möchten.",
+        "data": {
+          "country": "Land"
+        }
+      },
+      "region": {
         "description": "Wählen Sie die ALDI-Regionen aus, die Sie abonnieren möchten.",
         "data": {
           "region": "ALDI-Region"
@@ -14,13 +20,13 @@
       }
     },
     "abort": {
-      "already_configured": "ALDI Wochenangebote sind bereits eingerichtet."
+      "already_configured": "ALDI/Hofer Wochenangebote sind bereits eingerichtet."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "ALDI Wochenangebote konfigurieren",
+        "title": "ALDI/Hofer Wochenangebote konfigurieren",
         "data": {
           "update_interval": "Update-Intervall (Stunden, Min 1, Max 24)"
         }
@@ -28,6 +34,16 @@
     }
   },
   "selector": {
+    "country": {
+      "options": {
+        "de": "Deutschland",
+        "at": "Österreich (HOFER)",
+        "ch": "Schweiz (ALDI)",
+        "hu": "Ungarn (ALDI)",
+        "it": "Italien (ALDI)",
+        "si": "Slowenien (HOFER)"
+      }
+    },
     "region": {
       "options": {
         "sued": "ALDI SÜD",

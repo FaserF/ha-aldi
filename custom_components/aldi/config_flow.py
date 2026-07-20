@@ -11,6 +11,7 @@ from homeassistant.core import callback
 from homeassistant.helpers.selector import selector
 
 from .const import (
+    CONF_COUNTRY,
     CONF_REGION,
     CONF_UPDATE_INTERVAL,
     DEFAULT_UPDATE_INTERVAL,
@@ -20,6 +21,12 @@ from .const import (
     REGION_BOTH,
     REGION_NORD,
     REGION_SUED,
+    COUNTRY_DE,
+    COUNTRY_AT,
+    COUNTRY_CH,
+    COUNTRY_HU,
+    COUNTRY_IT,
+    COUNTRY_SI,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -33,6 +40,7 @@ class AldiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         """Initialize the config flow."""
         self._discovery_data: dict[str, Any] = {}
+        self._country: str | None = None
 
     async def async_step_integration_discovery(
         self, discovery_info: dict[str, Any]
@@ -64,15 +72,87 @@ class AldiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 REGION_BOTH: "ALDI SÜD & NORD Offers",
             }
             title = title_map.get(region, f"{region_label} Offers")
-            return self.async_create_entry(title=title, data={CONF_REGION: region})
+            return self.async_create_entry(
+                title=title,
+                data={CONF_COUNTRY: COUNTRY_DE, CONF_REGION: region},
+            )
 
         return self.async_show_form(step_id="discovery_confirm")
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Handle the initial user input step."""
+        """Handle the initial user input step (Country selection)."""
         _LOGGER.debug("async_step_user called with input: %s", user_input)
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            self._country = user_input[CONF_COUNTRY]
+            if self._country == COUNTRY_DE:
+                return await self.async_step_region()
+
+            # For other countries, configure directly using SÜD-style parsing structure
+            await self.async_set_unique_id(f"aldi_{self._country}")
+            self._abort_if_unique_id_configured()
+
+            title_map = {
+                COUNTRY_AT: "HOFER Österreich Offers",
+                COUNTRY_CH: "ALDI Suisse Offers",
+                COUNTRY_HU: "ALDI Magyarország Offers",
+                COUNTRY_IT: "ALDI Italia Offers",
+                COUNTRY_SI: "HOFER Slovenija Offers",
+            }
+            title = title_map.get(self._country, "ALDI Offers")
+
+            return self.async_create_entry(
+                title=title,
+                data={
+                    CONF_COUNTRY: self._country,
+                    CONF_REGION: self._country,  # Map region to country code to isolate caches
+                },
+            )
+
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_COUNTRY, default=COUNTRY_DE): selector(
+                    {
+                        "select": {
+                            "options": [
+                                {"value": COUNTRY_DE, "label": "Germany (Deutschland)"},
+                                {
+                                    "value": COUNTRY_AT,
+                                    "label": "Austria (Österreich / HOFER)",
+                                },
+                                {
+                                    "value": COUNTRY_CH,
+                                    "label": "Switzerland (Suisse / ALDI)",
+                                },
+                                {
+                                    "value": COUNTRY_HU,
+                                    "label": "Hungary (Magyarország / ALDI)",
+                                },
+                                {"value": COUNTRY_IT, "label": "Italy (Italia / ALDI)"},
+                                {
+                                    "value": COUNTRY_SI,
+                                    "label": "Slovenia (Slovenija / HOFER)",
+                                },
+                            ]
+                        }
+                    }
+                )
+            }
+        )
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=schema,
+            errors=errors,
+        )
+
+    async def async_step_region(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Handle region selection step if Germany is selected."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -89,7 +169,10 @@ class AldiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             return self.async_create_entry(
                 title=title,
-                data=user_input,
+                data={
+                    CONF_COUNTRY: COUNTRY_DE,
+                    CONF_REGION: region,
+                },
             )
 
         schema = vol.Schema(
@@ -109,7 +192,7 @@ class AldiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
         return self.async_show_form(
-            step_id="user",
+            step_id="region",
             data_schema=schema,
             errors=errors,
         )

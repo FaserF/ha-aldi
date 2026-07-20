@@ -1,6 +1,14 @@
 {
-  "name": "ALDI Discounts",
+  "name": "ALDI/Hofer Weekly Offers",
   "hacs": "2.0.0",
+  "country": [
+    "DE",
+    "AT",
+    "CH",
+    "HU",
+    "IT",
+    "SI"
+  ],
   "zip_release": true,
   "filename": "aldi.zip"
 }

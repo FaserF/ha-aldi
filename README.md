@@ -1,6 +1,6 @@
 <div align="center">
-  <h1>ALDI Weekly Offers (for Home Assistant) 🛒</h1>
-  <p><strong>A secure, robust Home Assistant integration that fetches weekly offers, discounts, and upcoming flyers from ALDI SÜD & ALDI NORD directly from official digital brochure APIs.</strong></p>
+  <h1>ALDI/Hofer Weekly Offers (for Home Assistant) 🛒</h1>
+  <p><strong>A secure, robust Home Assistant integration that fetches weekly offers, discounts, and upcoming flyers from ALDI & HOFER directly from official digital brochure APIs.</strong></p>
 
   [![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge)](https://hacs.xyz)
   [![Downloads (Current release)](https://img.shields.io/github/downloads/FaserF/ha-aldi/latest/aldi.zip?label=Downloads%20(Current%20release)&style=for-the-badge)](https://github.com/FaserF/ha-aldi/releases)
@@ -106,6 +106,15 @@ You can customise the poll interval of the integration at any time:
 1. Go to **Settings > Devices & Services**.
 2. Find **ALDI Weekly Offers** and click **Configure**.
 3. Set the **Update Interval** in hours (default is 24 hours, minimum is 1 hour).
+
+---
+
+## ❌ Unsupported Stores (ALDI US & Trader Joe's)
+
+This integration **only supports European countries** (DE, AT, CH, HU, IT, SI). It does **not** support ALDI USA or Trader Joe's:
+
+- **ALDI USA**: Circulars and weekly ads for ALDI US are hosted and powered by [Flipp](https://flipp.com) instead of ALDI's regional digital brochure backends. Flipp uses a proprietary API that relies on local ZIP codes and store-mapping infrastructure, which is incompatible with the direct leaflet API wrappers used in this integration.
+- **Trader Joe's**: Although owned by ALDI Nord's owner family, Trader Joe's operates independently and has an "Everyday Low Prices" model. They **do not publish weekly sales or discounts** and do not offer coupons or weekly circular ads.
 
 ---
 

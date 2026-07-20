@@ -4,6 +4,7 @@ DOMAIN = "aldi"
 PLATFORMS = ["button", "sensor"]
 
 # Configuration keys
+CONF_COUNTRY = "country"
 CONF_REGION = "region"
 CONF_UPDATE_INTERVAL = "update_interval"
 
@@ -31,3 +32,11 @@ ATTR_CATEGORY = "category"
 REGION_SUED = "sued"
 REGION_NORD = "nord"
 REGION_BOTH = "both"
+
+# Country selections
+COUNTRY_DE = "de"
+COUNTRY_AT = "at"
+COUNTRY_CH = "ch"
+COUNTRY_HU = "hu"
+COUNTRY_IT = "it"
+COUNTRY_SI = "si"

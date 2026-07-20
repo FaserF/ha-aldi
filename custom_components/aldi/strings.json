@@ -1,8 +1,14 @@
 {
   "config": {
-    "flow_title": "Setup ALDI weekly offers",
+    "flow_title": "Setup ALDI/Hofer weekly offers",
     "step": {
       "user": {
+        "description": "Select the country for the offers you want to track.",
+        "data": {
+          "country": "Country"
+        }
+      },
+      "region": {
         "description": "Select the ALDI regions you want to track.",
         "data": {
           "region": "ALDI Region"
@@ -14,13 +20,13 @@
       }
     },
     "abort": {
-      "already_configured": "ALDI weekly offers are already configured."
+      "already_configured": "ALDI/Hofer weekly offers are already configured."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Configure ALDI weekly offers",
+        "title": "Configure ALDI/Hofer weekly offers",
         "data": {
           "update_interval": "Update Interval (hours, min 1, max 24)"
         }

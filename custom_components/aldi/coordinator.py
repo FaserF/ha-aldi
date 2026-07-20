@@ -23,6 +23,7 @@ from .const import (
     ATTR_DISCOUNT_PRICE,
     ATTR_DISCOUNT_TITLE,
     ATTR_PICTURE,
+    CONF_COUNTRY,
     CONF_REGION,
     CONF_UPDATE_INTERVAL,
     DEFAULT_UPDATE_INTERVAL,
@@ -30,6 +31,12 @@ from .const import (
     REGION_BOTH,
     REGION_NORD,
     REGION_SUED,
+    COUNTRY_DE,
+    COUNTRY_AT,
+    COUNTRY_CH,
+    COUNTRY_HU,
+    COUNTRY_IT,
+    COUNTRY_SI,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -81,6 +88,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Initialize the coordinator."""
         config = {**entry.data, **entry.options}
         self.region: str = config[CONF_REGION]
+        self.country: str = config.get(CONF_COUNTRY, COUNTRY_DE)
         self.config_entry = entry
 
         self.store: storage.Store = storage.Store(hass, 1, f"{DOMAIN}_{self.region}")
@@ -90,6 +98,35 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         self.sued_current_url = "https://prospekt.aldi-sued.de/"
         self.nord_current_url = "https://www.aldi-nord.de/prospekte.html"
+
+        # CMS URLs and regex patterns for international countries (all using AEM and Publitas)
+        self.country_configs = {
+            COUNTRY_AT: {
+                "cms_url": "https://publish.prod.emea.cms.aldi.cx/content/aldi/emea/at/web/main/de/flugblatt.content.v1.api/content.json",
+                "url_pattern": r"https://katalog\.hofer\.at/flipbook_kw[0-9]+_[0-9]+_[0-9]+",
+                "default_url": "https://katalog.hofer.at/",
+            },
+            COUNTRY_CH: {
+                "cms_url": "https://publish.prod.emea.cms.aldi.cx/content/aldi/emea/ch/web/main/de/broschuere.content.v1.api/content.json",
+                "url_pattern": r"https://catalog\.aldi-suisse\.ch/aldiwoche_kw[0-9]+-[0-9]+_[a-z]+",
+                "default_url": "https://www.aldi-suisse.ch/de/broschuere.html",
+            },
+            COUNTRY_HU: {
+                "cms_url": "https://publish.prod.emea.cms.aldi.cx/content/aldi/emea/hu/web/main/hu/online-akcios-ujsag.content.v1.api/content.json",
+                "url_pattern": r"https://szorolap\.aldi\.hu/[a-zA-Z0-9_]+",
+                "default_url": "https://www.aldi.hu/hu/akciok/online-szorolap.html",
+            },
+            COUNTRY_IT: {
+                "cms_url": "https://publish.prod.emea.cms.aldi.cx/content/aldi/emea/it/web/main/it/volantino-online.content.v1.api/content.json",
+                "url_pattern": r"https://volantino\.aldi\.it/[a-zA-Z0-9_]+",
+                "default_url": "https://www.aldi.it/it/offerte/volantino-online.html",
+            },
+            COUNTRY_SI: {
+                "cms_url": "https://publish.prod.emea.cms.aldi.cx/content/aldi/emea/si/web/main/sl/aktualni-letaki-in-brosure.content.v1.api/content.json",
+                "url_pattern": r"https://letaki\.hofer\.si/[a-zA-Z0-9_]+",
+                "default_url": "https://www.hofer.si/sl/aktualni-letaki-in-brosure.html",
+            },
+        }
 
         interval_hours = config.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
         super().__init__(
@@ -197,29 +234,44 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             async with aiohttp.ClientSession() as session:
                 data: dict[str, Any] = {}
 
-                # ALDI Süd
-                if self.region in (REGION_SUED, REGION_BOTH):
+                # International (AT, CH, HU, IT, SI)
+                if self.country != COUNTRY_DE:
                     try:
-                        sued_data = await self._fetch_sued_data(session)
-                        data.update(sued_data)
+                        country_data = await self._fetch_publitas_country_data(session)
+                        data.update(country_data)
                     except Exception as err:
-                        _LOGGER.error("Failed to fetch ALDI SÜD data: %s", err)
-                        if self.region == REGION_SUED:
-                            raise UpdateFailed(
-                                f"Failed to fetch ALDI SÜD: {err}"
-                            ) from err
+                        _LOGGER.error(
+                            "Failed to fetch international ALDI data for %s: %s",
+                            self.country,
+                            err,
+                        )
+                        raise UpdateFailed(
+                            f"Failed to fetch international ALDI: {err}"
+                        ) from err
+                else:
+                    # Germany ALDI Süd
+                    if self.region in (REGION_SUED, REGION_BOTH):
+                        try:
+                            sued_data = await self._fetch_sued_data(session)
+                            data.update(sued_data)
+                        except Exception as err:
+                            _LOGGER.error("Failed to fetch ALDI SÜD data: %s", err)
+                            if self.region == REGION_SUED:
+                                raise UpdateFailed(
+                                    f"Failed to fetch ALDI SÜD: {err}"
+                                ) from err
 
-                # ALDI Nord
-                if self.region in (REGION_NORD, REGION_BOTH):
-                    try:
-                        nord_data = await self._fetch_nord_data(session)
-                        data.update(nord_data)
-                    except Exception as err:
-                        _LOGGER.error("Failed to fetch ALDI NORD data: %s", err)
-                        if self.region == REGION_NORD:
-                            raise UpdateFailed(
-                                f"Failed to fetch ALDI NORD: {err}"
-                            ) from err
+                    # Germany ALDI Nord
+                    if self.region in (REGION_NORD, REGION_BOTH):
+                        try:
+                            nord_data = await self._fetch_nord_data(session)
+                            data.update(nord_data)
+                        except Exception as err:
+                            _LOGGER.error("Failed to fetch ALDI NORD data: %s", err)
+                            if self.region == REGION_NORD:
+                                raise UpdateFailed(
+                                    f"Failed to fetch ALDI NORD: {err}"
+                                ) from err
 
                 self._last_success = dt_util.now()
                 data["last_success"] = self._last_success.isoformat()
@@ -227,6 +279,289 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 data["nord_current_url"] = self.nord_current_url
                 await self.store.async_save(data)
                 return data
+
+    def parse_week_from_url(self, url: str) -> int | None:
+        """Parse the calendar week number from a brochure/flyer URL."""
+        # 1. Match kwXX pattern (e.g. kw30 or kw_30 or kw-30)
+        match = re.search(r"kw_?[-]?(\d+)", url, re.IGNORECASE)
+        if match:
+            return int(match.group(1))
+
+        # 2. Match Italian date pattern da_lunedi_DD_Month
+        match_it = re.search(r"da_lunedi_(\d+)_([A-Za-z]+)", url, re.IGNORECASE)
+        if match_it:
+            day = int(match_it.group(1))
+            month_name = match_it.group(2).lower()
+            months = {
+                "gennaio": 1,
+                "febbraio": 2,
+                "marzo": 3,
+                "aprile": 4,
+                "maggio": 5,
+                "giugno": 6,
+                "luglio": 7,
+                "agosto": 8,
+                "settembre": 9,
+                "ottobre": 10,
+                "novembre": 11,
+                "dicembre": 12,
+            }
+            month = months.get(month_name)
+            if month:
+                today = datetime.date.today()
+                year = today.year
+                # Rollover handling
+                if today.month == 12 and month == 1:
+                    year += 1
+                elif today.month == 1 and month == 12:
+                    year -= 1
+                try:
+                    d = datetime.date(year, month, day)
+                    return d.isocalendar().week
+                except ValueError:
+                    pass
+        return None
+
+    async def _fetch_nuxt_offers(
+        self, session: aiohttp.ClientSession, url: str
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Fetch and parse weekly offers from Nuxt hydration state."""
+        try:
+            html = await self._request(session, url, return_json=False)
+            scripts = re.findall(r"<script[^>]*>(.*?)</script>", html, re.DOTALL)
+            payload_script = None
+            for s in scripts:
+                if s.strip().startswith("[") and "i18nResult" in s:
+                    payload_script = s.strip()
+                    break
+
+            if not payload_script:
+                _LOGGER.debug("No Nuxt hydration script found on %s", url)
+                return {}
+
+            data_list = json.loads(payload_script)
+
+            def decode_val(val: Any, memo: dict[int, Any] | None = None) -> Any:
+                if memo is None:
+                    memo = {}
+                if isinstance(val, int) and not isinstance(val, bool):
+                    if 0 <= val < len(data_list):
+                        if val in memo:
+                            return memo[val]
+                        raw = data_list[val]
+                        if isinstance(raw, dict):
+                            res_dict: dict[str, Any] = {}
+                            memo[val] = res_dict
+                            for k, v in raw.items():
+                                res_dict[k] = decode_val(v, memo)
+                            return res_dict
+                        elif isinstance(raw, list):
+                            if (
+                                len(raw) == 2
+                                and isinstance(raw[0], str)
+                                and raw[0] in ("ShallowReactive", "Reactive", "Ref")
+                            ):
+                                res_val = decode_val(raw[1], memo)
+                                memo[val] = res_val
+                                return res_val
+                            res_list: list[Any] = []
+                            memo[val] = res_list
+                            for v in raw:
+                                res_list.append(decode_val(v, memo))
+                            return res_list
+                        else:
+                            memo[val] = raw
+                            return raw
+                return val
+
+            root = decode_val(1)
+            state = root.get("state", {}) if isinstance(root, dict) else {}
+
+            all_products = []
+            for k, v in state.items():
+                if (
+                    isinstance(v, list)
+                    and len(v) > 0
+                    and isinstance(v[0], dict)
+                    and "sku" in v[0]
+                ):
+                    for item in v:
+                        if "name" in item and "price" in item and item["price"]:
+                            all_products.append(item)
+
+            current_week = datetime.date.today().isocalendar().week
+            next_week = (current_week + 1) if current_week < 52 else 1
+            preview_week = (next_week + 1) if next_week < 52 else 1
+
+            classified: dict[str, list[dict[str, Any]]] = {
+                "current": [],
+                "next": [],
+                "preview": [],
+            }
+
+            for p in all_products:
+                title = p["name"]
+                if p.get("brandName"):
+                    title = f"{p['brandName']} {title}"
+
+                price_info = p.get("price") or {}
+                price = price_info.get("amountRelevantDisplay")
+                if not price and price_info.get("amount"):
+                    price = f"€ {price_info['amount'] / 100:.2f}"
+                if not price:
+                    price = ""
+
+                desc = p.get("sellingSize") or ""
+
+                photo_url = ""
+                assets = p.get("assets") or []
+                if assets and isinstance(assets, list):
+                    photo_url = assets[0].get("url") or ""
+                    if photo_url and "{width}" in photo_url:
+                        photo_url = photo_url.replace("{width}", "800").replace(
+                            "{slug}", p.get("urlSlugText", "")
+                        )
+
+                prod_data = {
+                    ATTR_DISCOUNT_TITLE: title,
+                    ATTR_DISCOUNT_PRICE: price,
+                    ATTR_BASE_PRICE: desc,
+                    ATTR_PICTURE: photo_url,
+                    ATTR_CATEGORY: "Angebote",
+                }
+
+                sale_date_str = p.get("onSaleDateDisplay") or ""
+                date_match = re.search(r"(\d{2})\.(\d{2})\.(\d{4})", sale_date_str)
+                week = None
+                if date_match:
+                    day, month, year = map(int, date_match.groups())
+                    try:
+                        d = datetime.date(year, month, day)
+                        week = d.isocalendar().week
+                    except ValueError:
+                        pass
+
+                if week == current_week:
+                    classified["current"].append(prod_data)
+                elif week == next_week:
+                    classified["next"].append(prod_data)
+                elif week == preview_week:
+                    classified["preview"].append(prod_data)
+                else:
+                    classified["current"].append(prod_data)
+
+            return classified
+        except Exception as e:
+            _LOGGER.warning("Failed to parse Nuxt offers: %s", e)
+            return {}
+
+    async def _fetch_publitas_country_data(
+        self, session: aiohttp.ClientSession
+    ) -> dict[str, Any]:
+        """Fetch and parse flyer data for international Publitas/AEM countries."""
+        config = self.country_configs[self.country]
+        _LOGGER.debug(
+            "Fetching ALDI/HOFER data for %s from %s", self.country, config["cms_url"]
+        )
+
+        # 1. Fetch CMS sitemap or content JSON containing active brochures
+        cms_json = await self._request(session, config["cms_url"], return_json=True)
+        text_content = json.dumps(cms_json)
+
+        # 2. Find matching brochure URLs
+        urls = re.findall(config["url_pattern"], text_content)
+        if not urls:
+            _LOGGER.warning(
+                "No brochure URLs found for %s, falling back to empty list",
+                self.country,
+            )
+            return {
+                "sued_discounts": [],
+                "sued_next_discounts": [],
+                "sued_preview_discounts": [],
+                "sued_valid_until": "",
+                "sued_next_valid_until": "",
+                "sued_preview_valid_until": "",
+            }
+
+        # 3. Group base URLs by calendar week
+        by_week: dict[int, list[str]] = {}
+        for raw_url in urls:
+            # Strip suffix /page/1 or /
+            base_url = re.sub(r"/(?:page/\d+|)$", "", raw_url)
+            if "\\u" in base_url:
+                base_url = base_url.encode().decode("unicode_escape")
+            week = self.parse_week_from_url(base_url)
+            if week is not None:
+                by_week.setdefault(week, []).append(base_url)
+
+        # 4. Resolve Current, Next, and Preview weeks
+        current_week = datetime.date.today().isocalendar().week
+        next_week = (current_week + 1) if current_week < 52 else 1
+        preview_week = (next_week + 1) if next_week < 52 else 1
+
+        current_urls = by_week.get(current_week, [])
+        next_urls = by_week.get(next_week, [])
+        preview_urls = by_week.get(preview_week, [])
+
+        # Fallback if current week is missing but we have other weeks
+        if not current_urls and by_week:
+            available_weeks = sorted(by_week.keys())
+            current_week = available_weeks[0]
+            current_urls = by_week[current_week]
+            next_week = (
+                available_weeks[1] if len(available_weeks) > 1 else current_week + 1
+            )
+            next_urls = by_week.get(next_week, [])
+            preview_week = (
+                available_weeks[2] if len(available_weeks) > 2 else next_week + 1
+            )
+            preview_urls = by_week.get(preview_week, [])
+
+        if current_urls:
+            self.sued_current_url = current_urls[0]
+        else:
+            self.sued_current_url = config["default_url"]
+
+        # 5. Fetch and merge discounts for all booklets in each week
+        async def fetch_merged(urls_list: list[str]) -> list[dict[str, Any]]:
+            merged = []
+            for u in urls_list:
+                try:
+                    disc = await self._fetch_sued_leaflet(session, u)
+                    merged.extend(disc)
+                except Exception as e:
+                    _LOGGER.warning("Failed to parse leaflet %s: %s", u, e)
+            return merged
+
+        current_discounts = await fetch_merged(current_urls)
+        next_discounts = await fetch_merged(next_urls)
+        preview_discounts = await fetch_merged(preview_urls)
+
+        # Merge Nuxt offers for Austria and Hungary
+        if self.country in (COUNTRY_AT, COUNTRY_HU):
+            nuxt_url = (
+                "https://www.hofer.at/angebote"
+                if self.country == COUNTRY_AT
+                else "https://www.aldi.hu/hu/akciok"
+            )
+            nuxt_data = await self._fetch_nuxt_offers(session, nuxt_url)
+            if nuxt_data:
+                if nuxt_data.get("current"):
+                    current_discounts.extend(nuxt_data["current"])
+                if nuxt_data.get("next"):
+                    next_discounts.extend(nuxt_data["next"])
+                if nuxt_data.get("preview"):
+                    preview_discounts.extend(nuxt_data["preview"])
+
+        return {
+            "sued_discounts": current_discounts,
+            "sued_next_discounts": next_discounts,
+            "sued_preview_discounts": preview_discounts,
+            "sued_valid_until": f"KW {current_week}",
+            "sued_next_valid_until": f"KW {next_week}" if next_urls else "",
+            "sued_preview_valid_until": f"KW {preview_week}" if preview_urls else "",
+        }
 
     async def _fetch_sued_data(self, session: aiohttp.ClientSession) -> dict[str, Any]:
         """Fetch weekly offer data for ALDI Süd."""
@@ -279,9 +614,13 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _fetch_sued_leaflet(
         self, session: aiohttp.ClientSession, slug: str
     ) -> list[dict[str, Any]]:
-        """Fetch all page spreads and extract products for a given ALDI Süd brochure slug."""
-        url = f"https://prospekt.aldi-sued.de/{slug}/"
-        html = await self._request(session, url, return_json=False)
+        """Fetch all page spreads and extract products for a given ALDI Süd brochure slug or full URL."""
+        if slug.startswith("http://") or slug.startswith("https://"):
+            base_url = slug.rstrip("/")
+        else:
+            base_url = f"https://prospekt.aldi-sued.de/{slug}"
+
+        html = await self._request(session, base_url, return_json=False)
 
         num_pages_match = re.search(r'"numPages"\s*:\s*(\d+)', html)
         if not num_pages_match:
@@ -301,9 +640,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Fetch each hotspots_data.json
         discounts = []
         for page in pages:
-            page_url = (
-                f"https://prospekt.aldi-sued.de/{slug}/page/{page}/hotspots_data.json"
-            )
+            page_url = f"{base_url}/page/{page}/hotspots_data.json"
             try:
                 hotspots = await self._request(session, page_url, return_json=True)
                 for h in hotspots:
@@ -323,7 +660,14 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                     or ""
                                 )
                             if photo_url.startswith("/"):
-                                photo_url = f"https://prospekt.aldi-sued.de{photo_url}"
+                                # Parse domain/scheme from base_url to prefix absolute path photo URLs
+                                domain_match = re.match(r"(https?://[^/]+)", base_url)
+                                photo_prefix = (
+                                    domain_match.group(1)
+                                    if domain_match
+                                    else "https://prospekt.aldi-sued.de"
+                                )
+                                photo_url = f"{photo_prefix}{photo_url}"
 
                             discounts.append(
                                 {

@@ -19,6 +19,12 @@ from .const import (
     REGION_BOTH,
     REGION_NORD,
     REGION_SUED,
+    COUNTRY_DE,
+    COUNTRY_AT,
+    COUNTRY_CH,
+    COUNTRY_HU,
+    COUNTRY_IT,
+    COUNTRY_SI,
 )
 from .coordinator import AldiDataUpdateCoordinator
 
@@ -44,11 +50,12 @@ async def async_setup_entry(
 ) -> None:
     """Set up ALDI weekly offers sensors from a config entry."""
     coordinator: AldiDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    country = coordinator.country
     region = coordinator.region
 
     entities: list[SensorEntity] = []
 
-    if region in (REGION_SUED, REGION_BOTH):
+    if country != COUNTRY_DE or region in (REGION_SUED, REGION_BOTH):
         entities.append(AldiSuedSensor(coordinator))
         entities.append(AldiSuedNextSensor(coordinator))
         entities.append(AldiSuedPreviewSensor(coordinator))
@@ -56,7 +63,7 @@ async def async_setup_entry(
         entities.append(AldiSuedRecipesNextSensor(coordinator))
         entities.append(AldiSuedRecipesPreviewSensor(coordinator))
 
-    if region in (REGION_NORD, REGION_BOTH):
+    if country == COUNTRY_DE and region in (REGION_NORD, REGION_BOTH):
         entities.append(AldiNordSensor(coordinator))
         entities.append(AldiNordNextSensor(coordinator))
         entities.append(AldiNordPreviewSensor(coordinator))
@@ -67,23 +74,39 @@ async def async_setup_entry(
     async_add_entities(entities, update_before_add=False)
 
 
+def get_country_metadata(country: str) -> dict[str, str]:
+    """Get dynamic display name and manufacturer based on country code."""
+    if country == COUNTRY_AT:
+        return {"name": "HOFER", "manufacturer": "HOFER"}
+    if country == COUNTRY_CH:
+        return {"name": "ALDI Suisse", "manufacturer": "ALDI Suisse"}
+    if country == COUNTRY_HU:
+        return {"name": "ALDI Hungary", "manufacturer": "ALDI"}
+    if country == COUNTRY_IT:
+        return {"name": "ALDI Italy", "manufacturer": "ALDI"}
+    if country == COUNTRY_SI:
+        return {"name": "HOFER Slovenia", "manufacturer": "HOFER"}
+    return {"name": "ALDI SÜD", "manufacturer": "ALDI SÜD"}
+
+
 class AldiSuedSensor(CoordinatorEntity[AldiDataUpdateCoordinator], SensorEntity):
     """Represents current ALDI SÜD weekly offers (Aktuelle Woche)."""
 
     _attr_icon = "mdi:cart-percent"
     _attr_native_unit_of_measurement = "items"
     _attr_has_entity_name = True
-    _attr_name = "ALDI SÜD Offers"
     _unrecorded_attributes = frozenset({ATTR_DISCOUNTS})
 
     def __init__(self, coordinator: AldiDataUpdateCoordinator) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
+        meta = get_country_metadata(coordinator.country)
+        self._attr_name = None
         self._attr_unique_id = f"aldi_sued_{coordinator.region}_current"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"aldi_sued_{coordinator.region}")},
-            name="ALDI SÜD Offers",
-            manufacturer="ALDI SÜD",
+            name=f"{meta['name']} Offers",
+            manufacturer=meta["manufacturer"],
             model="Weekly Flyer",
             configuration_url=coordinator.sued_current_url,
         )
@@ -114,17 +137,18 @@ class AldiSuedNextSensor(CoordinatorEntity[AldiDataUpdateCoordinator], SensorEnt
     _attr_icon = "mdi:calendar-arrow-right"
     _attr_native_unit_of_measurement = "items"
     _attr_has_entity_name = True
-    _attr_name = "ALDI SÜD Offers Next"
     _unrecorded_attributes = frozenset({ATTR_DISCOUNTS})
 
     def __init__(self, coordinator: AldiDataUpdateCoordinator) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
+        meta = get_country_metadata(coordinator.country)
+        self._attr_name = "Next"
         self._attr_unique_id = f"aldi_sued_{coordinator.region}_next"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"aldi_sued_{coordinator.region}")},
-            name="ALDI SÜD Offers",
-            manufacturer="ALDI SÜD",
+            name=f"{meta['name']} Offers",
+            manufacturer=meta["manufacturer"],
             model="Weekly Flyer",
             configuration_url=coordinator.sued_current_url,
         )
@@ -155,17 +179,18 @@ class AldiSuedPreviewSensor(CoordinatorEntity[AldiDataUpdateCoordinator], Sensor
     _attr_icon = "mdi:calendar-arrow-right"
     _attr_native_unit_of_measurement = "items"
     _attr_has_entity_name = True
-    _attr_name = "ALDI SÜD Offers Preview"
     _unrecorded_attributes = frozenset({ATTR_DISCOUNTS})
 
     def __init__(self, coordinator: AldiDataUpdateCoordinator) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
+        meta = get_country_metadata(coordinator.country)
+        self._attr_name = "Preview"
         self._attr_unique_id = f"aldi_sued_{coordinator.region}_preview"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"aldi_sued_{coordinator.region}")},
-            name="ALDI SÜD Offers",
-            manufacturer="ALDI SÜD",
+            name=f"{meta['name']} Offers",
+            manufacturer=meta["manufacturer"],
             model="Weekly Flyer",
             configuration_url=coordinator.sued_current_url,
         )
@@ -196,18 +221,19 @@ class AldiSuedRecipesSensor(CoordinatorEntity[AldiDataUpdateCoordinator], Sensor
     _attr_icon = "mdi:chef-hat"
     _attr_native_unit_of_measurement = "items"
     _attr_has_entity_name = True
-    _attr_name = "ALDI SÜD Recipes"
     _attr_entity_registry_enabled_default = False
     _unrecorded_attributes = frozenset({ATTR_DISCOUNTS})
 
     def __init__(self, coordinator: AldiDataUpdateCoordinator) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
+        meta = get_country_metadata(coordinator.country)
+        self._attr_name = "Recipes"
         self._attr_unique_id = f"aldi_sued_{coordinator.region}_recipes_current"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"aldi_sued_{coordinator.region}")},
-            name="ALDI SÜD Offers",
-            manufacturer="ALDI SÜD",
+            name=f"{meta['name']} Offers",
+            manufacturer=meta["manufacturer"],
             model="Weekly Flyer",
             configuration_url=coordinator.sued_current_url,
         )
@@ -240,18 +266,19 @@ class AldiSuedRecipesNextSensor(
     _attr_icon = "mdi:chef-hat"
     _attr_native_unit_of_measurement = "items"
     _attr_has_entity_name = True
-    _attr_name = "ALDI SÜD Recipes Next"
     _attr_entity_registry_enabled_default = False
     _unrecorded_attributes = frozenset({ATTR_DISCOUNTS})
 
     def __init__(self, coordinator: AldiDataUpdateCoordinator) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
+        meta = get_country_metadata(coordinator.country)
+        self._attr_name = "Recipes Next"
         self._attr_unique_id = f"aldi_sued_{coordinator.region}_recipes_next"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"aldi_sued_{coordinator.region}")},
-            name="ALDI SÜD Offers",
-            manufacturer="ALDI SÜD",
+            name=f"{meta['name']} Offers",
+            manufacturer=meta["manufacturer"],
             model="Weekly Flyer",
             configuration_url=coordinator.sued_current_url,
         )
@@ -284,18 +311,19 @@ class AldiSuedRecipesPreviewSensor(
     _attr_icon = "mdi:chef-hat"
     _attr_native_unit_of_measurement = "items"
     _attr_has_entity_name = True
-    _attr_name = "ALDI SÜD Recipes Preview"
     _attr_entity_registry_enabled_default = False
     _unrecorded_attributes = frozenset({ATTR_DISCOUNTS})
 
     def __init__(self, coordinator: AldiDataUpdateCoordinator) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
+        meta = get_country_metadata(coordinator.country)
+        self._attr_name = "Recipes Preview"
         self._attr_unique_id = f"aldi_sued_{coordinator.region}_recipes_preview"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"aldi_sued_{coordinator.region}")},
-            name="ALDI SÜD Offers",
-            manufacturer="ALDI SÜD",
+            name=f"{meta['name']} Offers",
+            manufacturer=meta["manufacturer"],
             model="Weekly Flyer",
             configuration_url=coordinator.sued_current_url,
         )
@@ -326,7 +354,7 @@ class AldiNordSensor(CoordinatorEntity[AldiDataUpdateCoordinator], SensorEntity)
     _attr_icon = "mdi:cart-percent"
     _attr_native_unit_of_measurement = "items"
     _attr_has_entity_name = True
-    _attr_name = "ALDI NORD Offers"
+    _attr_name = None
     _unrecorded_attributes = frozenset({ATTR_DISCOUNTS})
 
     def __init__(self, coordinator: AldiDataUpdateCoordinator) -> None:
@@ -367,7 +395,7 @@ class AldiNordNextSensor(CoordinatorEntity[AldiDataUpdateCoordinator], SensorEnt
     _attr_icon = "mdi:calendar-arrow-right"
     _attr_native_unit_of_measurement = "items"
     _attr_has_entity_name = True
-    _attr_name = "ALDI NORD Offers Next"
+    _attr_name = "Next"
     _unrecorded_attributes = frozenset({ATTR_DISCOUNTS})
 
     def __init__(self, coordinator: AldiDataUpdateCoordinator) -> None:
@@ -408,7 +436,7 @@ class AldiNordPreviewSensor(CoordinatorEntity[AldiDataUpdateCoordinator], Sensor
     _attr_icon = "mdi:calendar-arrow-right"
     _attr_native_unit_of_measurement = "items"
     _attr_has_entity_name = True
-    _attr_name = "ALDI NORD Offers Preview"
+    _attr_name = "Preview"
     _unrecorded_attributes = frozenset({ATTR_DISCOUNTS})
 
     def __init__(self, coordinator: AldiDataUpdateCoordinator) -> None:
@@ -449,7 +477,7 @@ class AldiNordRecipesSensor(CoordinatorEntity[AldiDataUpdateCoordinator], Sensor
     _attr_icon = "mdi:chef-hat"
     _attr_native_unit_of_measurement = "items"
     _attr_has_entity_name = True
-    _attr_name = "ALDI NORD Recipes"
+    _attr_name = "Recipes"
     _attr_entity_registry_enabled_default = False
     _unrecorded_attributes = frozenset({ATTR_DISCOUNTS})
 
@@ -493,7 +521,7 @@ class AldiNordRecipesNextSensor(
     _attr_icon = "mdi:chef-hat"
     _attr_native_unit_of_measurement = "items"
     _attr_has_entity_name = True
-    _attr_name = "ALDI NORD Recipes Next"
+    _attr_name = "Recipes Next"
     _attr_entity_registry_enabled_default = False
     _unrecorded_attributes = frozenset({ATTR_DISCOUNTS})
 
@@ -537,7 +565,7 @@ class AldiNordRecipesPreviewSensor(
     _attr_icon = "mdi:chef-hat"
     _attr_native_unit_of_measurement = "items"
     _attr_has_entity_name = True
-    _attr_name = "ALDI NORD Recipes Preview"
+    _attr_name = "Recipes Preview"
     _attr_entity_registry_enabled_default = False
     _unrecorded_attributes = frozenset({ATTR_DISCOUNTS})
 
