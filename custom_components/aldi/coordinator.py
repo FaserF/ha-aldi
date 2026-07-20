@@ -443,6 +443,106 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 pattern += re.escape(char) + r"[\s\u00ad\u2009-]*"
             return pattern
 
+        def _infer_nord_category(enrichment: dict[str, Any], window: str) -> str:
+            """Return a category string for an ALDI NORD enrichment item.
+
+            Tier 1 – field from the enrichment JSON (future-proof if ALDI ever
+                      adds explicit category data to their API).
+            Tier 2 – keyword matching on the surrounding page-text window.
+            Tier 3 – fallback 'Angebote'.
+            """
+            # Tier 1: explicit field in enrichment object
+            for field in ("category", "productType", "productCategory", "type_label"):
+                val = enrichment.get(field)
+                if val and isinstance(val, str) and val not in {"product", "13"}:
+                    return val.strip()
+
+            # Tier 2: keyword matching (case-insensitive, longest match wins)
+            _KEYWORD_CATEGORIES: list[tuple[str, str]] = [
+                # Food – fresh
+                (
+                    r"obst|gem[üu]se|salat|apfel|tomate|gurke|paprika|zitrone|orange|banane|erdbeere",
+                    "Obst & Gemüse",
+                ),
+                (
+                    r"fleisch|wurst|aufschnitt|schinken|salami|hackfleisch|steak|schnitzel|h[äa]hnchen|gefl[üu]gel",
+                    "Fleisch & Wurst",
+                ),
+                (
+                    r"fisch|lachs|forelle|thunfisch|garnele|meeresfrüchte",
+                    "Fisch & Meeresfrüchte",
+                ),
+                (
+                    r"milch|k[äa]se|joghurt|quark|sahne|butter|mozzarella",
+                    "Milch & Käse",
+                ),
+                (
+                    r"brot|br[öo]tchen|toast|backwaren|kuchen|keks|geb[äa]ck",
+                    "Brot & Backwaren",
+                ),
+                (
+                    r"tiefk[üu]hl|tk-|tiefgek[üu]hlt|pizza|eis(becher|würfel|creme)?",
+                    "Tiefkühl",
+                ),
+                # Beverages
+                (
+                    r"getr[äa]nk|wasser|saft|limo|cola|bier|wein|sekt|kaffee|tee|kakao",
+                    "Getränke",
+                ),
+                # Pantry
+                (
+                    r"nudel|pasta|reis|mehl|zucker|[öo]l|essig|soße|sauce|gew[üu]rz|mayonnaise|ketchup|senf",
+                    "Vorrat",
+                ),
+                (
+                    r"müsli|cornflakes|fr[üu]hst[üu]ck|marmelade|honig|aufstrich",
+                    "Frühstück",
+                ),
+                (
+                    r"schokolade|s[üu][ßs]igkeiten|bonbon|gummi|chips|snack|popcorn|n[üu]sse",
+                    "Süßwaren & Snacks",
+                ),
+                (r"babynahrung|windel|baby", "Baby"),
+                (
+                    r"tiernahrung|hundefutter|katzenfutter|tierfutter|streu",
+                    "Tierbedarf",
+                ),
+                # Non-food
+                (
+                    r"waschmittel|spülmittel|reiniger|putzmittel|hygiene",
+                    "Haushalt & Reinigung",
+                ),
+                (
+                    r"shampoo|duschgel|deo|seife|kosmetik|creme|pflege|zahnb[üu]rste|zahnpasta",
+                    "Körperpflege",
+                ),
+                (
+                    r"werkzeug|bohrer|s[äa]ge|hammer|schraube|klebeband|akku",
+                    "Werkzeug & Baumarkt",
+                ),
+                (r"garten|pflanze|erde|d[üu]nger|blume|balkon|terrasse", "Garten"),
+                (
+                    r"textil|t-shirt|hose|jacke|socken|unterw[äa]sche|schuh|kleidung",
+                    "Textilien",
+                ),
+                (
+                    r"elektronik|handy|smartphone|tablet|laptop|kopfh[öo]rer|ladekabel|usb|hdmi",
+                    "Elektronik",
+                ),
+                (r"spielzeug|lego|puppe|brettspiel|spiel", "Spielzeug"),
+                (
+                    r"sport|fitness|fahrrad|helm|camping|outdoor|rucksack",
+                    "Sport & Freizeit",
+                ),
+            ]
+            w_lower = window.lower()
+            for pattern, label in _KEYWORD_CATEGORIES:
+                if re.search(pattern, w_lower):
+                    return label
+
+            # Tier 3: fallback
+            return "Angebote"
+
         for pidx, products in sorted(by_page.items()):
             if pidx >= len(page_texts):
                 continue
@@ -516,6 +616,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 desc = desc_match.group(0) if desc_match else ""
 
                 picture_url = page_images.get(pidx, "")
+                category = _infer_nord_category(p, window_text)
 
                 discounts.append(
                     {
@@ -525,7 +626,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         if original_price
                         else desc,
                         ATTR_PICTURE: picture_url,
-                        ATTR_CATEGORY: "Angebote",
+                        ATTR_CATEGORY: category,
                     }
                 )
 

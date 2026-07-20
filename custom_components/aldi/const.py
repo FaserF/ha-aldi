@@ -12,6 +12,12 @@ DEFAULT_UPDATE_INTERVAL = 24  # hours
 MIN_UPDATE_INTERVAL = 1  # hours
 MAX_UPDATE_INTERVAL = 24  # hours
 
+# Auto-discovery
+# Approximate latitude boundary between ALDI NORD and ALDI SÜD in Germany.
+# North of this line → ALDI NORD; south → ALDI SÜD.
+DISCOVERY_NORD_LAT_BOUNDARY = 51.5  # roughly Kassel / Dortmund line
+
+
 # Sensor attributes
 ATTR_DISCOUNTS = "discounts"
 ATTR_DISCOUNT_TITLE = "product"

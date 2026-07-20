@@ -30,6 +30,44 @@ class AldiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
+    def __init__(self) -> None:
+        """Initialize the config flow."""
+        self._discovery_data: dict[str, Any] = {}
+
+    async def async_step_integration_discovery(
+        self, discovery_info: dict[str, Any]
+    ) -> config_entries.ConfigFlowResult:
+        """Handle a discovered ALDI region (triggered by location-based auto-discovery)."""
+        region = discovery_info.get(CONF_REGION, "")
+        if not region:
+            return self.async_abort(reason="already_configured")
+
+        await self.async_set_unique_id(f"aldi_{region}")
+        self._abort_if_unique_id_configured()
+
+        self._discovery_data = discovery_info
+        self.context["title_placeholders"] = {
+            "region_label": discovery_info.get("region_label", "ALDI"),
+        }
+        return await self.async_step_discovery_confirm()
+
+    async def async_step_discovery_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Confirm adding the discovered ALDI region."""
+        if user_input is not None:
+            region = self._discovery_data.get(CONF_REGION, REGION_BOTH)
+            region_label = self._discovery_data.get("region_label", "ALDI")
+            title_map = {
+                REGION_SUED: "ALDI SÜD Offers",
+                REGION_NORD: "ALDI NORD Offers",
+                REGION_BOTH: "ALDI SÜD & NORD Offers",
+            }
+            title = title_map.get(region, f"{region_label} Offers")
+            return self.async_create_entry(title=title, data={CONF_REGION: region})
+
+        return self.async_show_form(step_id="discovery_confirm")
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:

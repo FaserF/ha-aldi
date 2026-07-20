@@ -7,6 +7,10 @@
         "data": {
           "region": "ALDI-Region"
         }
+      },
+      "discovery_confirm": {
+        "title": "ALDI-Region gefunden",
+        "description": "Basierend auf deinem Home Assistant Standort wurde folgende ALDI-Region erkannt:\n\n**{region_label}**\n\nMöchtest du sie hinzufügen?"
       }
     },
     "abort": {
