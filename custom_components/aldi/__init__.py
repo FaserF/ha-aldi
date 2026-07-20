@@ -8,6 +8,7 @@ from typing import Any
 from homeassistant import config_entries, core
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from .const import (
@@ -22,6 +23,7 @@ from .const import (
 from .coordinator import AldiDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 # Countries where ALDI operates with NORD/SÜD split (DE) or only SÜD (AT, CH, …)
 _ALDI_SUED_ONLY_COUNTRIES = {"AT", "CH", "AU", "GB", "IE", "US"}
