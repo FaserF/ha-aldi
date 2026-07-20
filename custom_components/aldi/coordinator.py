@@ -328,7 +328,9 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Fetch and parse weekly offers from Nuxt hydration state."""
         try:
             html = await self._request(session, url, return_json=False)
-            scripts = re.findall(r"<script[^>]*>(.*?)</script>", html, re.DOTALL | re.IGNORECASE)
+            scripts = re.findall(
+                r"<script[^>]*>(.*?)</script>", html, re.DOTALL | re.IGNORECASE
+            )
             payload_script = None
             for s in scripts:
                 if s.strip().startswith("[") and "i18nResult" in s:
