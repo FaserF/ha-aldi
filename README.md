@@ -14,13 +14,13 @@
 
 | | | | |
 | :--- | :--- | :--- | :--- |
-| [✨ Features](#-features) | [📦 Installation](#-installation) | [⚙️ Configuration](#-configuration) | [🛠️ Options](#-options-flow) |
-| [🧑‍💻 Development](#-development) | [📄 License](#-license) | | |
+| [✨ Features](#-features) | [🌍 Supported Countries](#-supported-countries) | [📦 Installation](#-installation) | [⚙️ Configuration](#-configuration) |
+| [🛠️ Options](#-options-flow) | [❌ Unsupported Stores](#-unsupported-stores-aldi-us--trader-joes) | [🧑‍💻 Development](#-development) | [📄 License](#-license) |
 
 ### Why use this integration?
-Instead of brittle web scraping, this integration uses ALDI's official leaflet backend structures (Publitas for SÜD, iPaper/NextJS-API for NORD) to fetch high-fidelity weekly offers as structured data.
+Instead of brittle web scraping, this integration uses ALDI's and HOFER's official leaflet backend structures (Publitas for ALDI SÜD, iPaper/Next.js-API for ALDI NORD, AEM/Nuxt for international countries) to fetch high-fidelity weekly offers as structured data.
 
-It groups all sensors under a single ALDI SÜD or ALDI NORD device entity, and implements advanced security rules (locks, random jitters, failures backoff) to prevent blockings and keep your connection secure.
+It groups all sensors under a single branded device entity per country, and implements advanced security rules (locks, random jitters, failure backoff) to prevent blocking and keep your connection secure.
 
 ---
 
@@ -34,6 +34,7 @@ It groups all sensors under a single ALDI SÜD or ALDI NORD device entity, and i
 > [!NOTE]
 > **Offers Next** and **Offers Preview** count may be `0` or contain very few items (like recipes) during the week. This is because ALDI only publishes/populates the interactive product hotspots on their servers a few days before the respective brochure goes live.
 
+- **🌍 Multi-Country Support**: Supports ALDI and HOFER stores across 6 European countries (see [Supported Countries](#-supported-countries)).
 - **🛡️ Rate-Limiting & Anti-Ban Protections**:
   - **First-Fetch Optimisation**: Skips jitter sleep on initial setup so the first refresh completes instantly.
   - **Lock Queueing**: A domain-wide lock ensures concurrent updates run sequentially.
@@ -41,12 +42,29 @@ It groups all sensors under a single ALDI SÜD or ALDI NORD device entity, and i
   - **Restart-Resistance**: Saves parsed data to HA storage cache to survive reboots without hitting the API.
   - **Dynamic Backoff**: Backs off for up to 24 hours on 403 or 429 errors, and minutes on network failures.
 - **⚙️ Device-Based Grouping**:
-  - All sensors and buttons are grouped under a main regional ALDI device.
+  - All sensors and buttons are grouped under a main branded ALDI/Hofer device.
   - **Visit Flyer Button**: The device registry provides a dynamic configuration URL that takes you straight to your specific week's online brochure page.
 - **🎛️ Manual Force Update**:
   - A **Force Update** button entity allows manually triggering an API update on demand (disabled by default to avoid accidental triggers).
 - **🔍 Diagnostic Downloads**:
   - Full support for Home Assistant UI Diagnostics. Download complete configurations with identifiers and session details automatically redacted.
+
+---
+
+## 🌍 Supported Countries
+
+| Country | Brand | Data Source |
+| :--- | :--- | :--- |
+| 🇩🇪 Germany (ALDI SÜD) | ALDI SÜD | Publitas flipbook API |
+| 🇩🇪 Germany (ALDI NORD) | ALDI NORD | iPaper / Next.js API |
+| 🇦🇹 Austria | HOFER | Publitas + Nuxt SSR API |
+| 🇨🇭 Switzerland | ALDI Suisse | Publitas flipbook API |
+| 🇭🇺 Hungary | ALDI Hungary | Publitas + Nuxt SSR API |
+| 🇮🇹 Italy | ALDI Italy | Publitas flipbook API |
+| 🇸🇮 Slovenia | HOFER Slovenia | Publitas flipbook API |
+
+> [!NOTE]
+> For **Austria** and **Hungary**, the integration additionally fetches the full product list from the respective store's Nuxt-rendered web page (e.g. `hofer.at/angebote`), which contains structured price, brand, and product image data not present in the Publitas flipbook.
 
 ---
 
@@ -75,7 +93,7 @@ This integration is fully compatible with [HACS](https://hacs.xyz/).
 1. Open HACS in Home Assistant.
 2. Click on the three dots in the top right corner and select **Custom repositories**.
 3. Add `FaserF/ha-aldi` with category **Integration**.
-4. Search for "ALDI Weekly Offers".
+4. Search for **"ALDI/Hofer Weekly Offers"**.
 5. Install and restart Home Assistant.
 
 [![Open HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=FaserF&repository=ha-aldi&category=integration)
@@ -91,11 +109,15 @@ This integration is fully compatible with [HACS](https://hacs.xyz/).
 ## ⚙️ Configuration
 
 1. Navigate to **Settings > Devices & Services** in Home Assistant.
-2. Click **Add Integration** and search for **ALDI Weekly Offers**.
+2. Click **Add Integration** and search for **ALDI/Hofer Weekly Offers**.
 
 [![Add Integration](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=aldi)
-3. Select your region of interest: **ALDI SÜD**, **ALDI NORD**, or **Both**.
-4. Submit to create the device and entities.
+
+3. **Step 1 – Select your country**:
+   - Choose one of the supported countries: Germany, Austria, Switzerland, Hungary, Italy, or Slovenia.
+   - For Germany, you will additionally select a region: **ALDI SÜD**, **ALDI NORD**, or **Both**.
+4. **Step 2** (Germany only) – Select region: **ALDI SÜD**, **ALDI NORD**, or **Both**.
+5. Submit to create the device and entities.
 
 ---
 
@@ -104,7 +126,7 @@ This integration is fully compatible with [HACS](https://hacs.xyz/).
 You can customise the poll interval of the integration at any time:
 
 1. Go to **Settings > Devices & Services**.
-2. Find **ALDI Weekly Offers** and click **Configure**.
+2. Find **ALDI/Hofer Weekly Offers** and click **Configure**.
 3. Set the **Update Interval** in hours (default is 24 hours, minimum is 1 hour).
 
 ---
@@ -124,6 +146,7 @@ This integration **only supports European countries** (DE, AT, CH, HU, IT, SI). 
 Ensure formatting and import order matches:
 ```bash
 ruff check . --fix
+ruff format .
 ```
 
 ### Type Checking
