@@ -7,7 +7,6 @@ import subprocess
 from datetime import datetime
 
 
-
 def run_git(args):
     try:
         return (
