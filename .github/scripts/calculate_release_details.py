@@ -4,6 +4,8 @@ import json
 import os
 import re
 import subprocess
+from datetime import datetime
+
 
 
 def run_git(args):
@@ -245,25 +247,42 @@ def main():
     )
 
     prerelease_note = (
-        f"\n> [!{alert_type}]\n> **Release Risk: {severity}**\n> {preamble}\n"
+        f"\n> [!{alert_type}]\n"
+        f"> **Release Risk: {severity}**\n"
+        f"> {preamble}\n"
+        f">\n"
+        f"> **Affected areas:** {impact_str}\n"
     )
 
-    # Format release details markdown
-    release_body = (
-        f"## {friendly_name} {version} {channel_badge}\n"
-        f"{prerelease_note}\n"
-        f"📊 **Impact Analysis:** {impact_str}\n"
-        f"📝 **Changelog:** {changelog_label}\n"
-        f"\n"
-        f"{changelog_md}\n"
-        f"\n"
-        f"---\n"
-        f"📖 **Resources:** [Documentation]({docs_url}) · [Changelog](CHANGELOG.md)\n"
-    )
+    released_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M") + " UTC"
+    body_parts = [
+        f"# {friendly_name} {version}  {channel_badge}",
+        "",
+        prerelease_note,
+        "## 📋 What's Changed",
+        "",
+        changelog_md,
+        "",
+        "## 📊 Release Details",
+        "",
+        "| | |",
+        "|---|---|",
+        f"| **Version** | `{version}` |",
+        f"| **Channel** | {rtype} |",
+        f"| **Released** | {released_at} |",
+        f"| **Commits included** | {total_commit_count} — {changelog_label} |",
+        f"| **Downloads (this release)** | [![Downloads](https://img.shields.io/github/downloads/{owner}/{repo_name}/{tag}/{domain}.zip?style=flat-square&logo=github)](https://github.com/{owner}/{repo_name}/releases/tag/{tag}) |",
+        f"| **Downloads (total)** | [![Downloads](https://img.shields.io/github/downloads/{owner}/{repo_name}/total?style=flat-square&logo=github)](https://github.com/{owner}/{repo_name}/releases) |",
+        "",
+        "---",
+        "",
+        f"*📖 [Documentation]({docs_url})  ·  🐛 [Report an Issue](https://github.com/{repo}/issues/new/choose)  ·  📦 [All Releases](https://github.com/{repo}/releases)*",
+    ]
 
-    # Write to file
+    body = "\n".join(body_parts)
+    release_body = body
     with open("release_body.md", "w", encoding="utf-8") as f:
-        f.write(release_body)
+        f.write(body)
 
     # Set outputs for GitHub Action step
     # Escape multi-line output for github action output
