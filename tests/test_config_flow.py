@@ -19,7 +19,19 @@ from custom_components.aldi.const import (
     CONF_UPDATE_INTERVAL,
 )
 
+from unittest.mock import patch
+
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
+
+
+@pytest.fixture(autouse=True)
+def mock_setup_entry():
+    """Mock setting up the config entry."""
+    with patch(
+        "custom_components.aldi.async_setup_entry",
+        return_value=True,
+    ) as mock_setup:
+        yield mock_setup
 
 
 async def test_flow_user_setup_germany(hass: HomeAssistant) -> None:
