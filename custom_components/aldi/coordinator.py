@@ -329,7 +329,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         try:
             html = await self._request(session, url, return_json=False)
             scripts = re.findall(
-                r"<script[^>]*>(.*?)</script>", html, re.DOTALL | re.IGNORECASE
+                r"<script[^>]*>(.*?)</script\s*[^>]*>", html, re.DOTALL | re.IGNORECASE
             )
             payload_script = None
             for s in scripts:
