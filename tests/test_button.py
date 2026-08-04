@@ -1,18 +1,19 @@
 """Test the ALDI weekly offers force-update buttons."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.aldi.const import (
-    DOMAIN,
-    CONF_REGION,
-    REGION_BOTH,
-    REGION_SUED,
-    REGION_NORD,
-)
 from custom_components.aldi.button import async_setup_entry
+from custom_components.aldi.const import (
+    CONF_REGION,
+    DOMAIN,
+    REGION_BOTH,
+    REGION_NORD,
+    REGION_SUED,
+)
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 

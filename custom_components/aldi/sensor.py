@@ -5,26 +5,26 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from homeassistant import config_entries
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.const import ATTR_ATTRIBUTION
-from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     ATTR_DISCOUNTS,
     ATTR_VALID_DATE,
+    COUNTRY_AT,
+    COUNTRY_CH,
+    COUNTRY_DE,
+    COUNTRY_HU,
+    COUNTRY_IT,
+    COUNTRY_SI,
     DOMAIN,
     REGION_BOTH,
     REGION_NORD,
     REGION_SUED,
-    COUNTRY_DE,
-    COUNTRY_AT,
-    COUNTRY_CH,
-    COUNTRY_HU,
-    COUNTRY_IT,
-    COUNTRY_SI,
 )
 from .coordinator import AldiDataUpdateCoordinator
 

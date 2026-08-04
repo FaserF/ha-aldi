@@ -1,11 +1,12 @@
 """Test the ALDI weekly offers sensors."""
 
 from unittest.mock import MagicMock
+
 import pytest
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.aldi.const import DOMAIN, CONF_REGION, REGION_BOTH
+from custom_components.aldi.const import CONF_REGION, DOMAIN, REGION_BOTH
 from custom_components.aldi.sensor import async_setup_entry
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")

@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import datetime
-import logging
-import re
 import json
+import logging
 import random
+import re
 from typing import Any
 
 import aiohttp
@@ -26,17 +26,17 @@ from .const import (
     CONF_COUNTRY,
     CONF_REGION,
     CONF_UPDATE_INTERVAL,
+    COUNTRY_AT,
+    COUNTRY_CH,
+    COUNTRY_DE,
+    COUNTRY_HU,
+    COUNTRY_IT,
+    COUNTRY_SI,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
     REGION_BOTH,
     REGION_NORD,
     REGION_SUED,
-    COUNTRY_DE,
-    COUNTRY_AT,
-    COUNTRY_CH,
-    COUNTRY_HU,
-    COUNTRY_IT,
-    COUNTRY_SI,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -394,7 +394,9 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         if "name" in item and "price" in item and item["price"]:
                             all_products.append(item)
 
-            current_week = datetime.datetime.now(datetime.timezone.utc).date().isocalendar().week
+            current_week = (
+                datetime.datetime.now(datetime.timezone.utc).date().isocalendar().week
+            )
             next_week = (current_week + 1) if current_week < 52 else 1
             preview_week = (next_week + 1) if next_week < 52 else 1
 
@@ -501,7 +503,9 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 by_week.setdefault(week, []).append(base_url)
 
         # 4. Resolve Current, Next, and Preview weeks
-        current_week = datetime.datetime.now(datetime.timezone.utc).date().isocalendar().week
+        current_week = (
+            datetime.datetime.now(datetime.timezone.utc).date().isocalendar().week
+        )
         next_week = (current_week + 1) if current_week < 52 else 1
         preview_week = (next_week + 1) if next_week < 52 else 1
 
@@ -571,7 +575,9 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _fetch_sued_data(self, session: aiohttp.ClientSession) -> dict[str, Any]:
         """Fetch weekly offer data for ALDI Süd."""
         _LOGGER.debug("Fetching ALDI SÜD data")
-        current_week = datetime.datetime.now(datetime.timezone.utc).date().isocalendar().week
+        current_week = (
+            datetime.datetime.now(datetime.timezone.utc).date().isocalendar().week
+        )
 
         # 1. Fetch publication wrapper
         url = f"https://services.publitas.com/aldi-sud/api-wrapper/pub-by-week?week={current_week}"
@@ -772,7 +778,13 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 all_type13.extend(
                     [e for e in jdata.get("enrichments", []) if e.get("type") == 13]
                 )
-            except (aiohttp.ClientError, json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
+            except (
+                aiohttp.ClientError,
+                json.JSONDecodeError,
+                KeyError,
+                TypeError,
+                ValueError,
+            ) as e:
                 _LOGGER.warning("Failed to fetch NORD enrichment JSON %s: %s", jurl, e)
                 continue
 

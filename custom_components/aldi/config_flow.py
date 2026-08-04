@@ -14,6 +14,12 @@ from .const import (
     CONF_COUNTRY,
     CONF_REGION,
     CONF_UPDATE_INTERVAL,
+    COUNTRY_AT,
+    COUNTRY_CH,
+    COUNTRY_DE,
+    COUNTRY_HU,
+    COUNTRY_IT,
+    COUNTRY_SI,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
     MAX_UPDATE_INTERVAL,
@@ -21,12 +27,6 @@ from .const import (
     REGION_BOTH,
     REGION_NORD,
     REGION_SUED,
-    COUNTRY_DE,
-    COUNTRY_AT,
-    COUNTRY_CH,
-    COUNTRY_HU,
-    COUNTRY_IT,
-    COUNTRY_SI,
 )
 
 _LOGGER = logging.getLogger(__name__)

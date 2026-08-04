@@ -1,6 +1,7 @@
 """Test the ALDI weekly offers coordinator."""
 
 from unittest.mock import MagicMock, patch
+
 import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import UpdateFailed
@@ -8,16 +9,16 @@ from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.aldi.const import (
-    DOMAIN,
     CONF_COUNTRY,
     CONF_REGION,
-    REGION_SUED,
-    REGION_NORD,
     COUNTRY_AT,
     COUNTRY_CH,
     COUNTRY_HU,
     COUNTRY_IT,
     COUNTRY_SI,
+    DOMAIN,
+    REGION_NORD,
+    REGION_SUED,
 )
 from custom_components.aldi.coordinator import AldiDataUpdateCoordinator
 
