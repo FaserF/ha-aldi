@@ -352,31 +352,31 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     and 0 <= val < len(data_list)
                 ):
                     if val in memo:
-                            return memo[val]
-                        raw = data_list[val]
-                        if isinstance(raw, dict):
-                            res_dict: dict[str, Any] = {}
-                            memo[val] = res_dict
-                            for k, v in raw.items():
-                                res_dict[k] = decode_val(v, memo)
-                            return res_dict
-                        elif isinstance(raw, list):
-                            if (
-                                len(raw) == 2
-                                and isinstance(raw[0], str)
-                                and raw[0] in ("ShallowReactive", "Reactive", "Ref")
-                            ):
-                                res_val = decode_val(raw[1], memo)
-                                memo[val] = res_val
-                                return res_val
-                            res_list: list[Any] = []
-                            memo[val] = res_list
-                            for v in raw:
-                                res_list.append(decode_val(v, memo))
-                            return res_list
-                        else:
-                            memo[val] = raw
-                            return raw
+                        return memo[val]
+                    raw = data_list[val]
+                    if isinstance(raw, dict):
+                        res_dict: dict[str, Any] = {}
+                        memo[val] = res_dict
+                        for k, v in raw.items():
+                            res_dict[k] = decode_val(v, memo)
+                        return res_dict
+                    elif isinstance(raw, list):
+                        if (
+                            len(raw) == 2
+                            and isinstance(raw[0], str)
+                            and raw[0] in ("ShallowReactive", "Reactive", "Ref")
+                        ):
+                            res_val = decode_val(raw[1], memo)
+                            memo[val] = res_val
+                            return res_val
+                        res_list: list[Any] = []
+                        memo[val] = res_list
+                        for v in raw:
+                            res_list.append(decode_val(v, memo))
+                        return res_list
+                    else:
+                        memo[val] = raw
+                        return raw
                 return val
 
             root = decode_val(1)
