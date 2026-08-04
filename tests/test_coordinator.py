@@ -312,13 +312,21 @@ async def test_coordinator_fetch_other_countries_success(hass: HomeAssistant) ->
             }
         ]
 
-        async def mock_request_helper(session, url, return_json=True):
-            if cms_endpoint in url:
-                return cms_response
+        async def mock_request_helper(
+            session,
+            url,
+            return_json=True,
+            _cms_endpoint=cms_endpoint,
+            _cms_response=cms_response,
+            _hotspots_response=hotspots_response,
+            _index_html=index_html,
+        ):
+            if _cms_endpoint in url:
+                return _cms_response
             elif "hotspots_data.json" in url:
-                return hotspots_response
+                return _hotspots_response
             else:
-                return index_html
+                return _index_html
 
         with (
             patch.object(coordinator, "_request", side_effect=mock_request_helper),

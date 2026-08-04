@@ -308,7 +308,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             }
             month = months.get(month_name)
             if month:
-                today = datetime.date.today()
+                today = datetime.datetime.now(datetime.timezone.utc).date()
                 year = today.year
                 # Rollover handling
                 if today.month == 12 and month == 1:
@@ -346,9 +346,12 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             def decode_val(val: Any, memo: dict[int, Any] | None = None) -> Any:
                 if memo is None:
                     memo = {}
-                if isinstance(val, int) and not isinstance(val, bool):
-                    if 0 <= val < len(data_list):
-                        if val in memo:
+                if (
+                    isinstance(val, int)
+                    and not isinstance(val, bool)
+                    and 0 <= val < len(data_list)
+                ):
+                    if val in memo:
                             return memo[val]
                         raw = data_list[val]
                         if isinstance(raw, dict):
@@ -380,7 +383,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             state = root.get("state", {}) if isinstance(root, dict) else {}
 
             all_products = []
-            for k, v in state.items():
+            for v in state.values():
                 if (
                     isinstance(v, list)
                     and len(v) > 0
@@ -391,7 +394,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         if "name" in item and "price" in item and item["price"]:
                             all_products.append(item)
 
-            current_week = datetime.date.today().isocalendar().week
+            current_week = datetime.datetime.now(datetime.timezone.utc).date().isocalendar().week
             next_week = (current_week + 1) if current_week < 52 else 1
             preview_week = (next_week + 1) if next_week < 52 else 1
 
@@ -453,7 +456,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     classified["current"].append(prod_data)
 
             return classified
-        except Exception as e:
+        except (AttributeError, KeyError, TypeError, ValueError) as e:
             _LOGGER.warning("Failed to parse Nuxt offers: %s", e)
             return {}
 
@@ -498,7 +501,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 by_week.setdefault(week, []).append(base_url)
 
         # 4. Resolve Current, Next, and Preview weeks
-        current_week = datetime.date.today().isocalendar().week
+        current_week = datetime.datetime.now(datetime.timezone.utc).date().isocalendar().week
         next_week = (current_week + 1) if current_week < 52 else 1
         preview_week = (next_week + 1) if next_week < 52 else 1
 
@@ -532,7 +535,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 try:
                     disc = await self._fetch_sued_leaflet(session, u)
                     merged.extend(disc)
-                except Exception as e:
+                except (aiohttp.ClientError, KeyError, TypeError, ValueError) as e:
                     _LOGGER.warning("Failed to parse leaflet %s: %s", u, e)
             return merged
 
@@ -568,7 +571,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _fetch_sued_data(self, session: aiohttp.ClientSession) -> dict[str, Any]:
         """Fetch weekly offer data for ALDI Süd."""
         _LOGGER.debug("Fetching ALDI SÜD data")
-        current_week = datetime.date.today().isocalendar().week
+        current_week = datetime.datetime.now(datetime.timezone.utc).date().isocalendar().week
 
         # 1. Fetch publication wrapper
         url = f"https://services.publitas.com/aldi-sud/api-wrapper/pub-by-week?week={current_week}"
@@ -617,7 +620,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self, session: aiohttp.ClientSession, slug: str
     ) -> list[dict[str, Any]]:
         """Fetch all page spreads and extract products for a given ALDI Süd brochure slug or full URL."""
-        if slug.startswith("http://") or slug.startswith("https://"):
+        if slug.startswith(("http://", "https://")):
             base_url = slug.rstrip("/")
         else:
             base_url = f"https://prospekt.aldi-sued.de/{slug}"
@@ -682,7 +685,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                     ATTR_CATEGORY: prod.get("productType", "Angebote"),
                                 }
                             )
-            except Exception as e:
+            except (aiohttp.ClientError, KeyError, TypeError, ValueError) as e:
                 _LOGGER.warning("Failed to fetch SÜD hotspots page %s: %s", page, e)
                 continue
         return discounts
@@ -745,7 +748,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     p_url = p_img.get("url")
                     if p_num and p_url:
                         page_images[int(p_num) - 1] = p_url
-        except Exception as e:
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
             _LOGGER.debug("Could not parse ALDI Nord page image maps: %s", e)
 
         # 2. Fetch the magazine HTML page
@@ -769,7 +772,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 all_type13.extend(
                     [e for e in jdata.get("enrichments", []) if e.get("type") == 13]
                 )
-            except Exception as e:
+            except (aiohttp.ClientError, json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
                 _LOGGER.warning("Failed to fetch NORD enrichment JSON %s: %s", jurl, e)
                 continue
 
