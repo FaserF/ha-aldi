@@ -1,8 +1,10 @@
+#!/usr/bin/env python3
 """Generates a structured, deduplicated, user-friendly changelog from git commit history."""
 
 import argparse
 import re
 import subprocess
+import sys
 
 # Noise filter — commits matching ANY pattern are silently dropped
 NOISE_PATTERNS = [
@@ -345,6 +347,7 @@ def main():
 
     out = []
     has_any = False
+    filtered_count = sum(len(buckets[k]) for k in CATEGORY_ORDER)
 
     if buckets["breaking"]:
         has_any = True
@@ -400,10 +403,23 @@ def main():
         out.append("")
 
     if not has_any:
+        out.append("> *No categorised changes found in this release.*")
         out.append(
-            f"_No user-facing changes since the last release. Total commits: {total_raw}_"
+            "> Most commits were maintenance, dependency updates, or automated changes."
         )
+        out.append("")
 
+    range_str = f"{from_tag}..HEAD" if from_tag else "all history"
+    out.append("---")
+
+    if total_raw > 0:
+        out.append(
+            f"*{filtered_count} significant changes from {total_raw} total commits since `{from_tag}`.*"
+        )
+    else:
+        out.append(f"*Changelog generated from `{range_str}`.*")
+
+    sys.stdout.reconfigure(encoding="utf-8")
     print("\n".join(out))
 
 
