@@ -129,6 +129,16 @@ You can customise the poll interval of the integration at any time:
 2. Find **ALDI/Hofer Weekly Offers** and click **Configure**.
 3. Set the **Update Interval** in hours (default is 24 hours, minimum is 1 hour).
 
+## 🃏 Lovelace Cards
+
+The community has built dedicated cards to display Aldi discounts beautifully in your dashboard.
+
+### Custom Discounts Card
+A dedicated Lovelace card maintained by the community:
+
+[![Discounts Card](https://img.shields.io/badge/Lovelace-%20Discounts%20Card-brightgreen?style=for-the-badge&logo=home-assistant)](https://github.com/schblondie/discounts-card)
+
+
 ---
 
 ## ❌ Unsupported Stores (ALDI US & Trader Joe's)
