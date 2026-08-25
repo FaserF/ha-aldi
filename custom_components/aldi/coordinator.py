@@ -228,8 +228,9 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         fetch_lock: asyncio.Lock = domain_data.setdefault("fetch_lock", asyncio.Lock())
 
         async with fetch_lock:
-            # Random jitter to prevent strict rate limiting
-            await asyncio.sleep(random.uniform(5.0, 15.0))
+            # Random jitter during background intervals to prevent strict rate limiting
+            if self.data is not None:
+                await asyncio.sleep(random.uniform(5.0, 15.0))
 
             async with aiohttp.ClientSession() as session:
                 data: dict[str, Any] = {}
