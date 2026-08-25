@@ -223,9 +223,17 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch and parse new data from ALDI."""
-        # Anti-ban lock
-        domain_data = self.hass.data.setdefault(DOMAIN, {})
-        fetch_lock: asyncio.Lock = domain_data.setdefault("fetch_lock", asyncio.Lock())
+        # Restart-resistance: if cache was loaded and is still fresh, reuse it
+        if self._last_success is not None and self.data:
+            time_since = dt_util.now() - self._last_success
+            effective_interval = self.update_interval or datetime.timedelta(hours=DEFAULT_UPDATE_INTERVAL)
+            if time_since < (effective_interval - datetime.timedelta(minutes=5)):
+                _LOGGER.info(
+                    "Reusing cached ALDI data for region %s: last success was %d min ago",
+                    self.region,
+                    int(time_since.total_seconds() / 60),
+                )
+                return self.data
 
         async with fetch_lock:
             # Random jitter during background intervals to prevent strict rate limiting
