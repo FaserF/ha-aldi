@@ -145,7 +145,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if "last_success" in cache:
                 try:
                     self._last_success = dt_util.parse_datetime(cache["last_success"])
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     self._last_success = None
             if "sued_current_url" in cache:
                 self.sued_current_url = cache["sued_current_url"]
@@ -207,7 +207,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     return await response.json()
                 return await response.text()
 
-        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+        except (TimeoutError, aiohttp.ClientError) as err:
             self._consecutive_failures += 1
             backoff_mins = min(1440, self._consecutive_failures * 60)
             self._backoff_until = dt_util.now() + datetime.timedelta(
@@ -320,7 +320,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             }
             month = months.get(month_name)
             if month:
-                today = datetime.datetime.now(datetime.timezone.utc).date()
+                today = datetime.datetime.now(datetime.UTC).date()
                 year = today.year
                 # Rollover handling
                 if today.month == 12 and month == 1:
@@ -406,9 +406,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         if "name" in item and "price" in item and item["price"]:
                             all_products.append(item)
 
-            current_week = (
-                datetime.datetime.now(datetime.timezone.utc).date().isocalendar().week
-            )
+            current_week = datetime.datetime.now(datetime.UTC).date().isocalendar().week
             next_week = (current_week + 1) if current_week < 52 else 1
             preview_week = (next_week + 1) if next_week < 52 else 1
 
@@ -515,9 +513,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 by_week.setdefault(week, []).append(base_url)
 
         # 4. Resolve Current, Next, and Preview weeks
-        current_week = (
-            datetime.datetime.now(datetime.timezone.utc).date().isocalendar().week
-        )
+        current_week = datetime.datetime.now(datetime.UTC).date().isocalendar().week
         next_week = (current_week + 1) if current_week < 52 else 1
         preview_week = (next_week + 1) if next_week < 52 else 1
 
@@ -587,9 +583,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _fetch_sued_data(self, session: aiohttp.ClientSession) -> dict[str, Any]:
         """Fetch weekly offer data for ALDI Süd."""
         _LOGGER.debug("Fetching ALDI SÜD data")
-        current_week = (
-            datetime.datetime.now(datetime.timezone.utc).date().isocalendar().week
-        )
+        current_week = datetime.datetime.now(datetime.UTC).date().isocalendar().week
 
         # 1. Fetch publication wrapper
         url = f"https://services.publitas.com/aldi-sud/api-wrapper/pub-by-week?week={current_week}"
