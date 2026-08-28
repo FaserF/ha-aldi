@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from homeassistant import config_entries
@@ -70,6 +71,13 @@ async def async_setup_entry(
         entities.append(AldiNordRecipesSensor(coordinator))
         entities.append(AldiNordRecipesNextSensor(coordinator))
         entities.append(AldiNordRecipesPreviewSensor(coordinator))
+
+    product_filters = getattr(coordinator, "product_filters", []) or []
+    for product_filter in product_filters:
+        if product_filter and str(product_filter).strip():
+            entities.append(
+                AldiProductFilterSensor(coordinator, str(product_filter).strip())
+            )
 
     async_add_entities(entities, update_before_add=False)
 
@@ -597,5 +605,148 @@ class AldiNordRecipesPreviewSensor(
         return {
             ATTR_DISCOUNTS: [d for d in discounts if is_recipe(d)],
             ATTR_VALID_DATE: data.get("nord_preview_valid_until"),
+            ATTR_ATTRIBUTION: ATTRIBUTION,
+        }
+
+
+class AldiProductFilterSensor(
+    CoordinatorEntity[AldiDataUpdateCoordinator], SensorEntity
+):
+    """Represents a product filter sensor tracking specific offers."""
+
+    _attr_icon = "mdi:tag-search"
+    _attr_has_entity_name = True
+    _unrecorded_attributes = frozenset({"matches"})
+
+    def __init__(
+        self, coordinator: AldiDataUpdateCoordinator, product_filter: str
+    ) -> None:
+        """Initialize the product filter sensor."""
+        super().__init__(coordinator)
+        self.product_filter = product_filter
+        slug_filter = re.sub(r"[^a-zA-Z0-9_-]", "_", product_filter.lower())
+        self._attr_unique_id = f"aldi_{coordinator.region}_filter_{slug_filter}"
+        self._attr_name = f"Filter {product_filter}"
+
+        if coordinator.region == REGION_NORD:
+            dev_id = f"aldi_nord_{coordinator.region}"
+            dev_name = "ALDI NORD Offers"
+            dev_mfr = "ALDI NORD"
+            config_url = coordinator.nord_current_url
+        else:
+            meta = get_country_metadata(coordinator.country)
+            dev_id = f"aldi_sued_{coordinator.region}"
+            dev_name = f"{meta['name']} Offers"
+            dev_mfr = meta["manufacturer"]
+            config_url = coordinator.sued_current_url
+
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, dev_id)},
+            name=dev_name,
+            manufacturer=dev_mfr,
+            model="Weekly Flyer",
+            configuration_url=config_url,
+        )
+
+    def _get_discounts(self) -> list[dict[str, Any]]:
+        """Get all discount items from coordinator data."""
+        if not self.coordinator.data:
+            return []
+        if "discounts" in self.coordinator.data:
+            return self.coordinator.data.get("discounts") or []
+        sued = self.coordinator.data.get("sued_discounts") or []
+        nord = self.coordinator.data.get("nord_discounts") or []
+        return sued + nord
+
+    def _get_matches(self) -> list[dict[str, Any]]:
+        """Find matching offers for the configured product filter."""
+        discounts = self._get_discounts()
+        term = self.product_filter.lower()
+        matches: list[dict[str, Any]] = []
+        for item in discounts:
+            prod_name = str(item.get("product", "")).lower()
+            cat_name = str(item.get("category", "")).lower()
+            base_price = str(item.get("base_price", "")).lower()
+            if term in prod_name or term in cat_name or term in base_price:
+                matches.append(item)
+        return matches
+
+    @staticmethod
+    def _parse_price(price_val: Any) -> float | None:
+        """Parse price string to float for comparison."""
+        if price_val is None:
+            return None
+        if isinstance(price_val, (int, float)):
+            return float(price_val)
+        price_str = str(price_val).strip()
+        if not price_str:
+            return None
+        match = re.search(r"(\d+(?:[.,]\d+)?)", price_str.replace(" ", ""))
+        if match:
+            try:
+                return float(match.group(1).replace(",", "."))
+            except ValueError:
+                return None
+        return None
+
+    def _get_best_match(self, matches: list[dict[str, Any]]) -> dict[str, Any] | None:
+        """Find the offer with the lowest (best) price."""
+        if not matches:
+            return None
+        best_item: dict[str, Any] | None = None
+        min_price = float("inf")
+        for item in matches:
+            price = self._parse_price(item.get("price"))
+            if price is not None and price < min_price:
+                min_price = price
+                best_item = item
+        return best_item or matches[0]
+
+    def _get_valid_until(self) -> str | None:
+        """Get valid_until date string."""
+        if not self.coordinator.data:
+            return None
+        return (
+            self.coordinator.data.get("valid_until")
+            or self.coordinator.data.get("sued_valid_until")
+            or self.coordinator.data.get("nord_valid_until")
+        )
+
+    @property
+    def native_value(self) -> str:
+        """Return the best price found or 'Nicht im Angebot'."""
+        if not self.coordinator.data:
+            return "Nicht im Angebot"
+        matches = self._get_matches()
+        if not matches:
+            return "Nicht im Angebot"
+        best = self._get_best_match(matches)
+        if best and best.get("price"):
+            return str(best["price"])
+        return "Im Angebot"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return product filter attributes."""
+        matches = self._get_matches() if self.coordinator.data else []
+        on_sale = len(matches) > 0
+        best_match = self._get_best_match(matches) if on_sale else None
+        valid_until = (
+            best_match.get("valid_until")
+            if best_match and best_match.get("valid_until")
+            else self._get_valid_until()
+        )
+
+        return {
+            "filter": self.product_filter,
+            "on_sale": on_sale,
+            "match_count": len(matches),
+            "best_price": best_match.get("price") if best_match else None,
+            "base_price": best_match.get("base_price") if best_match else None,
+            "product_title": best_match.get("product") if best_match else None,
+            "category": best_match.get("category") if best_match else None,
+            "valid_until": valid_until,
+            "picture_link": best_match.get("picture_link") if best_match else None,
+            "matches": matches,
             ATTR_ATTRIBUTION: ATTRIBUTION,
         }

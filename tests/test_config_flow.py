@@ -107,7 +107,7 @@ async def test_flow_already_configured(hass: HomeAssistant) -> None:
 
 
 async def test_options_flow(hass: HomeAssistant) -> None:
-    """Test options flow to configure update interval."""
+    """Test options flow to configure update interval and product filters."""
     entry = MockConfigEntry(
         domain=DOMAIN,
         title="ALDI SÜD & NORD Offers",
@@ -122,10 +122,13 @@ async def test_options_flow(hass: HomeAssistant) -> None:
 
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
-        {CONF_UPDATE_INTERVAL: 6},
+        {CONF_UPDATE_INTERVAL: 6, "product_filters": ["Butter", "Kaffee"]},
     )
     assert result["type"] == "create_entry"
-    assert result["data"] == {CONF_UPDATE_INTERVAL: 6}
+    assert result["data"] == {
+        CONF_UPDATE_INTERVAL: 6,
+        "product_filters": ["Butter", "Kaffee"],
+    }
 
 
 async def test_flow_user_setup_other_countries(hass: HomeAssistant) -> None:

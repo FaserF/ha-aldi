@@ -24,6 +24,7 @@ from .const import (
     ATTR_DISCOUNT_TITLE,
     ATTR_PICTURE,
     CONF_COUNTRY,
+    CONF_PRODUCT_FILTERS,
     CONF_REGION,
     CONF_UPDATE_INTERVAL,
     COUNTRY_AT,
@@ -89,6 +90,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         config = {**entry.data, **entry.options}
         self.region: str = config[CONF_REGION]
         self.country: str = config.get(CONF_COUNTRY, COUNTRY_DE)
+        self.product_filters: list[str] = list(config.get(CONF_PRODUCT_FILTERS, []))
         self.config_entry = entry
 
         self.store: storage.Store = storage.Store(hass, 1, f"{DOMAIN}_{self.region}")
@@ -289,6 +291,12 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 data["last_success"] = self._last_success.isoformat()
                 data["sued_current_url"] = self.sued_current_url
                 data["nord_current_url"] = self.nord_current_url
+                data["discounts"] = data.get("sued_discounts", []) + data.get(
+                    "nord_discounts", []
+                )
+                data["valid_until"] = data.get("sued_valid_until") or data.get(
+                    "nord_valid_until", ""
+                )
                 await self.store.async_save(data)
                 return data
 

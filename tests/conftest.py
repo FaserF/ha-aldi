@@ -1,5 +1,6 @@
 """Fixtures for ALDI weekly offers tests."""
 
+import asyncio
 import sys
 import types
 
@@ -12,6 +13,7 @@ if sys.platform == "win32":
     fcntl.fcntl = lambda *args, **kwargs: 0  # type: ignore[attr-defined]
     fcntl.ioctl = lambda *args, **kwargs: 0  # type: ignore[attr-defined]
     sys.modules["fcntl"] = fcntl
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 # Bypass pytest-socket unconditionally to allow loopback sockets/socketpairs on all platforms
 pytest_socket.disable_socket = lambda *args, **kwargs: None

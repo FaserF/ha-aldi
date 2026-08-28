@@ -8,10 +8,16 @@ from typing import Any
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
-from homeassistant.helpers.selector import selector
+from homeassistant.helpers.selector import (
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+    selector,
+)
 
 from .const import (
     CONF_COUNTRY,
+    CONF_PRODUCT_FILTERS,
     CONF_REGION,
     CONF_UPDATE_INTERVAL,
     COUNTRY_AT,
@@ -223,12 +229,24 @@ class AldiOptionsFlowHandler(config_entries.OptionsFlow):
         current_interval = self.config_entry.options.get(
             CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
         )
+        current_filters = self.config_entry.options.get(CONF_PRODUCT_FILTERS, [])
 
         options_schema = vol.Schema(
             {
                 vol.Optional(CONF_UPDATE_INTERVAL, default=current_interval): vol.All(
                     vol.Coerce(int),
                     vol.Range(min=MIN_UPDATE_INTERVAL, max=MAX_UPDATE_INTERVAL),
+                ),
+                vol.Optional(
+                    CONF_PRODUCT_FILTERS,
+                    default=current_filters,
+                ): SelectSelector(
+                    SelectSelectorConfig(
+                        options=list(current_filters),
+                        multiple=True,
+                        custom_value=True,
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
                 ),
             }
         )

@@ -28,7 +28,8 @@
       "init": {
         "title": "ALDI/Hofer Wochenangebote konfigurieren",
         "data": {
-          "update_interval": "Update-Intervall (Stunden, Min 1, Max 24)"
+          "update_interval": "Update-Intervall (Stunden, Min 1, Max 24)",
+          "product_filters": "Produktfilter (zu überwachende Suchbegriffe)"
         }
       }
     }

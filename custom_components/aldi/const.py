@@ -5,6 +5,7 @@ PLATFORMS = ["button", "sensor"]
 
 # Configuration keys
 CONF_COUNTRY = "country"
+CONF_PRODUCT_FILTERS = "product_filters"
 CONF_REGION = "region"
 CONF_UPDATE_INTERVAL = "update_interval"
 

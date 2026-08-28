@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.aldi.const import CONF_REGION, DOMAIN, REGION_BOTH
-from custom_components.aldi.sensor import async_setup_entry
+from custom_components.aldi.sensor import AldiProductFilterSensor, async_setup_entry
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
 
@@ -24,6 +24,7 @@ async def test_sensors_setup(hass: HomeAssistant) -> None:
     coordinator = MagicMock()
     coordinator.country = "de"
     coordinator.region = REGION_BOTH
+    coordinator.product_filters = []
     coordinator.sued_current_url = "https://sued-url"
     coordinator.nord_current_url = "https://nord-url"
 
@@ -101,3 +102,94 @@ async def test_sensors_setup(hass: HomeAssistant) -> None:
     assert nord_recipes_next.extra_state_attributes["discounts"] == [
         {"product": "Zutaten für Suppe", "price": "", "base_price": "Rezept"}
     ]
+
+
+async def test_product_filter_sensor(hass: HomeAssistant) -> None:
+    """Test AldiProductFilterSensor matching, best price calculation and attributes."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_REGION: REGION_BOTH},
+        options={"product_filters": ["Kaffee", "Schokolade"]},
+    )
+    entry.add_to_hass(hass)
+
+    coordinator = MagicMock()
+    coordinator.country = "de"
+    coordinator.region = REGION_BOTH
+    coordinator.product_filters = ["Kaffee", "Schokolade"]
+    coordinator.sued_current_url = "https://sued-url"
+    coordinator.nord_current_url = "https://nord-url"
+
+    mock_data = {
+        "discounts": [
+            {
+                "product": "Bio Kaffee Premium",
+                "price": "4.49 €",
+                "base_price": "500g (8.98/kg)",
+                "category": "Kaffee & Tee",
+                "picture_link": "https://img/kaffee1.png",
+            },
+            {
+                "product": "Kaffee Mild",
+                "price": "3.99 €",
+                "base_price": "500g (7.98/kg)",
+                "category": "Getränke",
+                "picture_link": "https://img/kaffee2.png",
+            },
+            {
+                "product": "Gouda Käse",
+                "price": "1.99 €",
+                "base_price": "400g",
+                "category": "Molkerei",
+                "picture_link": "https://img/gouda.png",
+            },
+        ],
+        "valid_until": "13.7",
+    }
+    coordinator.data = mock_data
+    hass.data[DOMAIN] = {entry.entry_id: coordinator}
+
+    async_add_entities = MagicMock()
+    await async_setup_entry(hass, entry, async_add_entities)
+
+    created_sensors = async_add_entities.call_args[0][0]
+    # 12 standard sensors + 2 filter sensors
+    assert len(created_sensors) == 14
+
+    # Test Kaffee filter sensor (should match 2 items, best price 3.99 €)
+    kaffee_sensor = created_sensors[12]
+    assert isinstance(kaffee_sensor, AldiProductFilterSensor)
+    assert kaffee_sensor.name == "Filter Kaffee"
+    assert kaffee_sensor.native_value == "3.99 €"
+    attrs = kaffee_sensor.extra_state_attributes
+    assert attrs["filter"] == "Kaffee"
+    assert attrs["on_sale"] is True
+    assert attrs["match_count"] == 2
+    assert attrs["best_price"] == "3.99 €"
+    assert attrs["base_price"] == "500g (7.98/kg)"
+    assert attrs["product_title"] == "Kaffee Mild"
+    assert attrs["category"] == "Getränke"
+    assert attrs["valid_until"] == "13.7"
+    assert attrs["picture_link"] == "https://img/kaffee2.png"
+    assert len(attrs["matches"]) == 2
+    assert attrs["attribution"] == "Data provided by ALDI SÜD & NORD digital brochures"
+
+    # Test Schokolade filter sensor (not on sale)
+    schoko_sensor = created_sensors[13]
+    assert isinstance(schoko_sensor, AldiProductFilterSensor)
+    assert schoko_sensor.name == "Filter Schokolade"
+    assert schoko_sensor.native_value == "Nicht im Angebot"
+    schoko_attrs = schoko_sensor.extra_state_attributes
+    assert schoko_attrs["filter"] == "Schokolade"
+    assert schoko_attrs["on_sale"] is False
+    assert schoko_attrs["match_count"] == 0
+    assert schoko_attrs["best_price"] is None
+    assert schoko_attrs["base_price"] is None
+    assert schoko_attrs["product_title"] is None
+    assert schoko_attrs["category"] is None
+    assert schoko_attrs["picture_link"] is None
+    assert schoko_attrs["matches"] == []
+    assert (
+        schoko_attrs["attribution"]
+        == "Data provided by ALDI SÜD & NORD digital brochures"
+    )

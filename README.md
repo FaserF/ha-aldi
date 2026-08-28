@@ -20,6 +20,22 @@
 ### Why use this integration?
 Instead of brittle web scraping, this integration uses ALDI's and HOFER's official leaflet backend structures (Publitas for ALDI SÜD, iPaper/Next.js-API for ALDI NORD, AEM/Nuxt for international countries) to fetch high-fidelity weekly offers as structured data.
 
+---
+
+### 🛒 Supermarket Family & Deals Hub
+
+Check out our full collection of Home Assistant supermarket integrations and the multi-store aggregator:
+
+| Repository | Description |
+| :--- | :--- |
+| 🏷️ [**Grocery Deals (ha-grocery-deals)**](https://github.com/FaserF/ha-grocery-deals) | **Smart multi-store price comparison hub (aggregates all 5 integrations)** |
+| 🔴 [**ha-rewe**](https://github.com/FaserF/ha-rewe) | REWE weekly offers, bonus points, coupons & product filters |
+| 🟡 [**ha-edeka**](https://github.com/FaserF/ha-edeka) | EDEKA weekly offers, discounts & PAYBACK card |
+| 🔵 [**ha-lidl**](https://github.com/FaserF/ha-lidl) | Lidl Plus weekly offers, coupons & digital receipts |
+| 🔴 [**ha-norma**](https://github.com/FaserF/ha-norma) | Norma weekly store discounts & flyer offers |
+
+---
+
 It groups all sensors under a single branded device entity per country, and implements advanced security rules (locks, random jitters, failure backoff) to prevent blocking and keep your connection secure.
 
 ---
@@ -172,14 +188,6 @@ pytest
 ```
 
 ---
-
-## 🛒 Other Supermarket Integrations
-
-If you like this integration, you might also be interested in my other supermarket integrations for Home Assistant:
-
-- [EDEKA Offers](https://github.com/FaserF/ha-edeka)
-- [REWE Offers](https://github.com/FaserF/ha-rewe)
-- [Lidl Offers](https://github.com/FaserF/ha-lidl)
 
 ## 📄 License
 
