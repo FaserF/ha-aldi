@@ -73,10 +73,30 @@ async def async_setup_entry(
         entities.append(AldiNordRecipesPreviewSensor(coordinator))
 
     product_filters = getattr(coordinator, "product_filters", []) or []
+    active_slugs = set()
     for product_filter in product_filters:
-        if product_filter and str(product_filter).strip():
-            entities.append(
-                AldiProductFilterSensor(coordinator, str(product_filter).strip())
+        clean_str = str(product_filter).strip()
+        if clean_str:
+            entities.append(AldiProductFilterSensor(coordinator, clean_str))
+            slug = re.sub(r"[^a-zA-Z0-9_-]", "_", clean_str.lower())
+            active_slugs.add(f"aldi_{coordinator.region}_filter_{slug}")
+
+    # Reconcile entity registry: purge any filter entities belonging to this entry that are no longer configured
+    from homeassistant.helpers import entity_registry as er
+
+    ent_reg = er.async_get(hass)
+    entry_entities = er.async_entries_for_config_entry(ent_reg, entry.entry_id)
+    for ent in entry_entities:
+        if (
+            ent.domain == "sensor"
+            and ent.unique_id.startswith(f"aldi_{coordinator.region}_filter_")
+            and ent.unique_id not in active_slugs
+        ):
+            ent_reg.async_remove(ent.entity_id)
+            _LOGGER.debug(
+                "ALDI: Removed stale filter entity %s (unique_id=%s)",
+                ent.entity_id,
+                ent.unique_id,
             )
 
     async_add_entities(entities, update_before_add=False)
