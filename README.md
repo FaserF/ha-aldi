@@ -139,11 +139,19 @@ This integration is fully compatible with [HACS](https://hacs.xyz/).
 
 ## 🛠️ Options Flow
 
-You can customise the poll interval of the integration at any time:
+You can customise integration settings at any time:
 
 1. Go to **Settings > Devices & Services**.
 2. Find **ALDI/Hofer Weekly Offers** and click **Configure**.
-3. Set the **Update Interval** in hours (default is 24 hours, minimum is 1 hour).
+3. Configure the available options:
+   - **Update Interval**: Set the update interval in hours (default is 24 hours, minimum is 1 hour).
+   - **Product Filters**: Add keywords to monitor specific products (e.g. `Kaffee`, `Butter`, `Milch`, `Brot`).
+
+### 🔍 Product Filter Sensors
+When product filter keywords are configured in the Options Flow, the integration automatically creates dedicated filter sensor entities (`sensor.aldi_<region>_filter_<keyword>`):
+- **State**: Displays the best offer price found or `Nicht im Angebot` if no match exists.
+- **Attributes**: Includes `on_sale` (boolean), `match_count`, `best_price`, `base_price`, `product_title`, `category`, `valid_until`, `picture_link`, and the list of all matching items (`matches`).
+- **Dynamic Cleanup**: Removing a keyword from the options automatically cleans up its sensor entity from the entity registry.
 
 ## 🃏 Lovelace Cards
 

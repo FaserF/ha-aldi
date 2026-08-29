@@ -11,7 +11,6 @@ from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from .const import (
     CONF_PRODUCT_FILTERS,
@@ -151,11 +150,9 @@ async def async_setup_entry(
 
     try:
         await coordinator.async_config_entry_first_refresh()
-    except UpdateFailed as err:
+    except ConfigEntryNotReady as err:
         if not coordinator.data:
-            raise ConfigEntryNotReady(
-                f"Cannot fetch ALDI offers for region {coordinator.region}: {err}"
-            ) from err
+            raise
         _LOGGER.warning(
             "Initial ALDI update failed for region %s, using cached data. Error: %s",
             coordinator.region,
@@ -176,7 +173,9 @@ async def async_setup_entry(
         if hass.is_running:
             hass.async_create_task(_async_discover_region(hass))
         else:
-            hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _on_ha_started)
+            entry.async_on_unload(
+                hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _on_ha_started)
+            )
 
     _LOGGER.debug("Finished setting up ALDI entry: %s", entry.entry_id)
     return True
@@ -226,5 +225,8 @@ async def async_unload_entry(
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
+        entries = [k for k in hass.data[DOMAIN] if not k.startswith("_")]
+        if not entries:
+            hass.data[DOMAIN].pop("_discovery_scheduled", None)
     _LOGGER.debug("Unload result for ALDI entry %s: %s", entry.entry_id, unload_ok)
     return unload_ok

@@ -237,6 +237,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     self.region,
                     int(time_since.total_seconds() / 60),
                 )
+                return self.data
         domain_data = self.hass.data.setdefault(DOMAIN, {})
         fetch_lock: asyncio.Lock = domain_data.setdefault("fetch_lock", asyncio.Lock())
 
@@ -263,13 +264,18 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             f"Failed to fetch international ALDI: {err}"
                         ) from err
                 else:
+                    success = False
+                    last_error: Exception | None = None
+
                     # Germany ALDI Süd
                     if self.region in (REGION_SUED, REGION_BOTH):
                         try:
                             sued_data = await self._fetch_sued_data(session)
                             data.update(sued_data)
+                            success = True
                         except Exception as err:
                             _LOGGER.error("Failed to fetch ALDI SÜD data: %s", err)
+                            last_error = err
                             if self.region == REGION_SUED:
                                 raise UpdateFailed(
                                     f"Failed to fetch ALDI SÜD: {err}"
@@ -280,12 +286,23 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         try:
                             nord_data = await self._fetch_nord_data(session)
                             data.update(nord_data)
+                            success = True
                         except Exception as err:
                             _LOGGER.error("Failed to fetch ALDI NORD data: %s", err)
+                            last_error = err
                             if self.region == REGION_NORD:
                                 raise UpdateFailed(
                                     f"Failed to fetch ALDI NORD: {err}"
                                 ) from err
+
+                    if not success:
+                        if last_error is not None:
+                            raise UpdateFailed(
+                                f"Failed to fetch ALDI data for region {self.region}: {last_error}"
+                            ) from last_error
+                        raise UpdateFailed(
+                            f"Failed to fetch ALDI data for region {self.region}"
+                        )
 
                 self._last_success = dt_util.now()
                 data["last_success"] = self._last_success.isoformat()
@@ -297,7 +314,8 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 data["valid_until"] = data.get("sued_valid_until") or data.get(
                     "nord_valid_until", ""
                 )
-                await self.store.async_save(data)
+                if data.get("discounts"):
+                    await self.store.async_save(data)
                 return data
 
     def parse_week_from_url(self, url: str) -> int | None:
