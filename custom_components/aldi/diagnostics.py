@@ -16,6 +16,7 @@ TO_REDACT = {
     "token",
     "session",
     "webhook_id",
+    "zip_code",
 }
 
 

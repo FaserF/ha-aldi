@@ -555,7 +555,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _fetch_us_data(self, session: aiohttp.ClientSession) -> dict[str, Any]:
         """Fetch weekly flyer and discount data for ALDI US."""
-        _LOGGER.debug("Fetching ALDI US data (ZIP: %s)", self.zip_code)
+        _LOGGER.debug("Fetching ALDI US data")
         url = "https://www.aldi.us/store/aldi/flyers/view/weekly"
 
         cookies = None
