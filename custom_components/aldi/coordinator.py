@@ -881,6 +881,9 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     if h.get("type") == "product":
                         for prod in h.get("products", []):
                             title = prod.get("title", "")
+                            brand = prod.get("brand") or prod.get("brandName") or ""
+                            if brand and brand.lower() not in title.lower():
+                                title = f"{brand} {title}"
                             desc = prod.get("description", "")
                             orig_price = prod.get("price", "")
                             disc_price = prod.get("discountedPrice") or orig_price

@@ -51,6 +51,7 @@ async def test_coordinator_fetch_sued_success(hass: HomeAssistant) -> None:
             "products": [
                 {
                     "title": "Bananen",
+                    "brand": "Bio",
                     "description": "Premium Bananen",
                     "price": "1.99",
                     "discountedPrice": "1.49",
@@ -80,7 +81,7 @@ async def test_coordinator_fetch_sued_success(hass: HomeAssistant) -> None:
         assert (
             len(res["sued_discounts"]) == 3
         )  # 3 pages/spreads generated, each fetches hotspots
-        assert res["sued_discounts"][0]["product"] == "Bananen"
+        assert res["sued_discounts"][0]["product"] == "Bio Bananen"
         assert res["sued_discounts"][0]["price"] == "1.49"
         assert (
             res["sued_discounts"][0]["picture_link"]
