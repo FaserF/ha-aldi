@@ -20,12 +20,14 @@ from .const import (
     CONF_PRODUCT_FILTERS,
     CONF_REGION,
     CONF_UPDATE_INTERVAL,
+    CONF_ZIP_CODE,
     COUNTRY_AT,
     COUNTRY_CH,
     COUNTRY_DE,
     COUNTRY_HU,
     COUNTRY_IT,
     COUNTRY_SI,
+    COUNTRY_US,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
     MAX_UPDATE_INTERVAL,
@@ -97,6 +99,9 @@ class AldiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if self._country == COUNTRY_DE:
                 return await self.async_step_region()
 
+            if self._country == COUNTRY_US:
+                return await self.async_step_zip()
+
             # For other countries, configure directly using SÜD-style parsing structure
             await self.async_set_unique_id(f"aldi_{self._country}")
             self._abort_if_unique_id_configured()
@@ -142,6 +147,10 @@ class AldiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                                     "value": COUNTRY_SI,
                                     "label": "Slovenia (Slovenija / HOFER)",
                                 },
+                                {
+                                    "value": COUNTRY_US,
+                                    "label": "United States (ALDI US)",
+                                },
                             ]
                         }
                     }
@@ -151,6 +160,42 @@ class AldiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user",
+            data_schema=schema,
+            errors=errors,
+        )
+
+    async def async_step_zip(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Handle US ZIP code step."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            zip_code = str(user_input.get(CONF_ZIP_CODE, "")).strip()
+            if not zip_code or not zip_code.isdigit() or len(zip_code) != 5:
+                errors[CONF_ZIP_CODE] = "invalid_zip"
+            else:
+                await self.async_set_unique_id(f"aldi_us_{zip_code}")
+                self._abort_if_unique_id_configured()
+
+                title = f"ALDI US ({zip_code}) Offers"
+                return self.async_create_entry(
+                    title=title,
+                    data={
+                        CONF_COUNTRY: COUNTRY_US,
+                        CONF_REGION: f"us_{zip_code}",
+                        CONF_ZIP_CODE: zip_code,
+                    },
+                )
+
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_ZIP_CODE): selector({"text": {}}),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="zip",
             data_schema=schema,
             errors=errors,
         )

@@ -78,9 +78,12 @@ It groups all sensors under a single branded device entity per country, and impl
 | 🇭🇺 Hungary | ALDI Hungary | Publitas + Nuxt SSR API |
 | 🇮🇹 Italy | ALDI Italy | Publitas flipbook API |
 | 🇸🇮 Slovenia | HOFER Slovenia | Publitas flipbook API |
+| 🇺🇸 United States | ALDI US | Instacart Storefront Pro SSR (ZIP code based) |
 
 > [!NOTE]
 > For **Austria** and **Hungary**, the integration additionally fetches the full product list from the respective store's Nuxt-rendered web page (e.g. `hofer.at/angebote`), which contains structured price, brand, and product image data not present in the Publitas flipbook.
+>
+> For the **United States**, the weekly specials and circulars are provided via ALDI US's Instacart Storefront architecture. You will be asked for your 5-digit ZIP code during configuration to load the correct local weekly ad.
 
 ---
 
@@ -129,10 +132,12 @@ This integration is fully compatible with [HACS](https://hacs.xyz/).
 
 [![Add Integration](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=aldi)
 
-3. **Step 1 – Select your country**:
-   - Choose one of the supported countries: Germany, Austria, Switzerland, Hungary, Italy, or Slovenia.
-   - For Germany, you will additionally select a region: **ALDI SÜD**, **ALDI NORD**, or **Both**.
-4. **Step 2** (Germany only) – Select region: **ALDI SÜD**, **ALDI NORD**, or **Both**.
+3. **Step 1 – Select your country / region**:
+   - Choose one of the supported countries: Germany, Austria, Switzerland, Hungary, Italy, Slovenia, or United States.
+4. **Step 2**:
+   - **Germany**: Select region (**ALDI SÜD**, **ALDI NORD**, or **Both**).
+   - **United States**: Enter your 5-digit **ZIP Code** (e.g. `60174`).
+   - **Other European Countries**: Automatically configured for the national catalog.
 5. Submit to create the device and entities.
 
 ---
@@ -165,12 +170,17 @@ A dedicated Lovelace card maintained by the community:
 
 ---
 
-## ❌ Unsupported Stores (ALDI US & Trader Joe's)
+## ℹ️ Technical Differences & Maintenance Scope
 
-This integration **only supports European countries** (DE, AT, CH, HU, IT, SI). It does **not** support ALDI USA or Trader Joe's:
+> [!IMPORTANT]
+> **Primary Maintainer Scope**: The core focus and primary maintenance of this repository is for **ALDI EU (Germany, Austria, Switzerland, Hungary, Italy, Slovenia)**. Support for ALDI US is provided on a best-effort basis for the international community.
 
-- **ALDI USA**: Circulars and weekly ads for ALDI US are hosted and powered by [Flipp](https://flipp.com) instead of ALDI's regional digital brochure backends. Flipp uses a proprietary API that relies on local ZIP codes and store-mapping infrastructure, which is incompatible with the direct leaflet API wrappers used in this integration.
-- **Trader Joe's**: Although owned by ALDI Nord's owner family, Trader Joe's operates independently and has an "Everyday Low Prices" model. They **do not publish weekly sales or discounts** and do not offer coupons or weekly circular ads.
+### Technical Architecture Comparison:
+- **ALDI EU (DE, AT, CH, HU, IT, SI)**: European ALDI & HOFER entities rely on Publitas digital flipbook APIs, Next.js embedded data, and Adobe Experience Manager (AEM) EMEA endpoints (`publish.prod.emea.cms.aldi.cx`). Offers are organized weekly by calendar week (`KW`).
+- **ALDI US**: ALDI US operates on an Instacart Storefront Pro infrastructure. Offers are location- and ZIP-dependent, extracted from server-side rendered state (`DocumentCache`).
+
+### Unsupported: Trader Joe's
+Although owned by ALDI Nord's owner family, **Trader Joe's** operates independently and uses an "Everyday Low Prices" model. They **do not publish weekly sales or discounts** and do not offer coupons or circular ads.
 
 ---
 

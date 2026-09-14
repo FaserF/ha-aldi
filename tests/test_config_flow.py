@@ -11,12 +11,14 @@ from custom_components.aldi.const import (
     CONF_COUNTRY,
     CONF_REGION,
     CONF_UPDATE_INTERVAL,
+    CONF_ZIP_CODE,
     COUNTRY_AT,
     COUNTRY_CH,
     COUNTRY_DE,
     COUNTRY_HU,
     COUNTRY_IT,
     COUNTRY_SI,
+    COUNTRY_US,
     DOMAIN,
     REGION_BOTH,
     REGION_SUED,
@@ -152,3 +154,58 @@ async def test_flow_user_setup_other_countries(hass: HomeAssistant) -> None:
         assert result["type"] == "create_entry"
         assert result["title"] == title
         assert result["data"] == {CONF_COUNTRY: country, CONF_REGION: country}
+
+
+async def test_flow_user_setup_us_valid(hass: HomeAssistant) -> None:
+    """Test US user setup step with valid ZIP code."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    assert result["type"] == "form"
+    assert result["step_id"] == "user"
+
+    # Select US
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_COUNTRY: COUNTRY_US},
+    )
+    assert result["type"] == "form"
+    assert result["step_id"] == "zip"
+
+    # Enter 5-digit ZIP
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_ZIP_CODE: "60174"},
+    )
+    assert result["type"] == "create_entry"
+    assert result["title"] == "ALDI US (60174) Offers"
+    assert result["data"] == {
+        CONF_COUNTRY: COUNTRY_US,
+        CONF_REGION: "us_60174",
+        CONF_ZIP_CODE: "60174",
+    }
+
+
+async def test_flow_user_setup_us_invalid_zip(hass: HomeAssistant) -> None:
+    """Test US user setup step with invalid ZIP code returning an error."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    assert result["type"] == "form"
+    assert result["step_id"] == "user"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_COUNTRY: COUNTRY_US},
+    )
+    assert result["type"] == "form"
+    assert result["step_id"] == "zip"
+
+    # Enter invalid ZIP
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_ZIP_CODE: "123"},
+    )
+    assert result["type"] == "form"
+    assert result["step_id"] == "zip"
+    assert result["errors"] == {CONF_ZIP_CODE: "invalid_zip"}

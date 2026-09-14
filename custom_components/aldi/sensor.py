@@ -22,6 +22,7 @@ from .const import (
     COUNTRY_HU,
     COUNTRY_IT,
     COUNTRY_SI,
+    COUNTRY_US,
     DOMAIN,
     REGION_BOTH,
     REGION_NORD,
@@ -114,6 +115,8 @@ def get_country_metadata(country: str) -> dict[str, str]:
         return {"name": "ALDI Italy", "manufacturer": "ALDI"}
     if country == COUNTRY_SI:
         return {"name": "HOFER Slovenia", "manufacturer": "HOFER"}
+    if country == COUNTRY_US:
+        return {"name": "ALDI US", "manufacturer": "ALDI US"}
     return {"name": "ALDI SÜD", "manufacturer": "ALDI SÜD"}
 
 

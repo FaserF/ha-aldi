@@ -11,11 +11,13 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.aldi.const import (
     CONF_COUNTRY,
     CONF_REGION,
+    CONF_ZIP_CODE,
     COUNTRY_AT,
     COUNTRY_CH,
     COUNTRY_HU,
     COUNTRY_IT,
     COUNTRY_SI,
+    COUNTRY_US,
     DOMAIN,
     REGION_NORD,
     REGION_SUED,
@@ -341,3 +343,48 @@ async def test_coordinator_fetch_other_countries_success(hass: HomeAssistant) ->
 
         # Cleanup config entry for next loop iteration
         await hass.config_entries.async_remove(entry.entry_id)
+
+
+async def test_coordinator_fetch_us_success(hass: HomeAssistant) -> None:
+    """Test successful ALDI US offers fetch and parsing."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_COUNTRY: COUNTRY_US,
+            CONF_REGION: "us_60174",
+            CONF_ZIP_CODE: "60174",
+        },
+        options={},
+    )
+    entry.add_to_hass(hass)
+
+    coordinator = AldiDataUpdateCoordinator(hass, entry)
+
+    mock_html = """
+    <html>
+    <head>
+    <script>
+    %7B%22__META%22%3A%7B%22type%22%3A%22DocumentCache%22%7D%2C%22Items%22%3A%7B%22key1%22%3A%7B%22items%22%3A%5B%7B%22id%22%3A%22item_1%22%2C%22name%22%3A%22Organic%20Strawberries%22%2C%22brandName%22%3A%22Simply%20Nature%22%2C%22size%22%3A%221%20lb%22%2C%22viewSection%22%3A%7B%22itemImage%22%3A%7B%22url%22%3A%22https%3A%2F%2Fimg.aldi.us%2Fstrawberries.jpg%22%7D%7D%7D%5D%7D%7D%2C%22ItemPricesQuery%22%3A%7B%22key1%22%3A%7B%22itemPrices%22%3A%5B%7B%22id%22%3A%22item_1%22%2C%22viewSection%22%3A%7B%22itemCard%22%3A%7B%22priceString%22%3A%22%242.49%22%2C%22fullPriceString%22%3A%22%243.99%22%7D%2C%22itemDetails%22%3A%7B%22pricePerUnitString%22%3A%22%242.49%2Flb%22%7D%7D%7D%5D%7D%7D%7D
+    </script>
+    </head>
+    </html>
+    """
+
+    async def mock_request_helper(
+        session, url, return_json=True, headers=None, cookies=None
+    ):
+        return mock_html
+
+    with (
+        patch.object(coordinator, "_request", side_effect=mock_request_helper),
+        patch("asyncio.sleep"),
+    ):
+        res = await coordinator._async_update_data()
+        assert res["sued_valid_until"] == "Weekly Ad (60174)"
+        assert len(res["sued_discounts"]) == 1
+        disc = res["sued_discounts"][0]
+        assert disc["product"] == "Simply Nature Organic Strawberries"
+        assert disc["price"] == "$2.49"
+        assert disc["base_price"] == "1 lb ($2.49/lb)"
+        assert disc["picture_link"] == "https://img.aldi.us/strawberries.jpg"
+        assert disc["category"] == "Weekly Specials"

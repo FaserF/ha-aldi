@@ -8,6 +8,7 @@ import json
 import logging
 import random
 import re
+import urllib.parse
 from typing import Any
 
 import aiohttp
@@ -27,12 +28,14 @@ from .const import (
     CONF_PRODUCT_FILTERS,
     CONF_REGION,
     CONF_UPDATE_INTERVAL,
+    CONF_ZIP_CODE,
     COUNTRY_AT,
     COUNTRY_CH,
     COUNTRY_DE,
     COUNTRY_HU,
     COUNTRY_IT,
     COUNTRY_SI,
+    COUNTRY_US,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
     REGION_BOTH,
@@ -90,6 +93,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         config = {**entry.data, **entry.options}
         self.region: str = config[CONF_REGION]
         self.country: str = config.get(CONF_COUNTRY, COUNTRY_DE)
+        self.zip_code: str = config.get(CONF_ZIP_CODE, "")
         self.product_filters: list[str] = list(config.get(CONF_PRODUCT_FILTERS, []))
         self.config_entry = entry
 
@@ -179,7 +183,12 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self.nord_current_url = cache["nord_current_url"]
 
     async def _request(
-        self, session: aiohttp.ClientSession, url: str, return_json: bool = True
+        self,
+        session: aiohttp.ClientSession,
+        url: str,
+        return_json: bool = True,
+        headers: dict[str, str] | None = None,
+        cookies: dict[str, str] | None = None,
     ) -> Any:
         """Perform request with random headers, anti-ban lock, and consecutive backoffs."""
         if self._backoff_until and dt_util.now() < self._backoff_until:
@@ -192,10 +201,15 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 f"Request skipped due to active back-off until {self._backoff_until}"
             )
 
-        headers = get_random_headers()
+        req_headers = get_random_headers()
+        if headers:
+            req_headers.update(headers)
         try:
             async with session.get(
-                url, headers=headers, timeout=aiohttp.ClientTimeout(total=30)
+                url,
+                headers=req_headers,
+                cookies=cookies,
+                timeout=aiohttp.ClientTimeout(total=30),
             ) as response:
                 if response.status in (403, 429):
                     self._consecutive_failures += 1
@@ -273,8 +287,16 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             async with aiohttp.ClientSession() as session:
                 data: dict[str, Any] = {}
 
+                # United States (ALDI US)
+                if self.country == COUNTRY_US:
+                    try:
+                        us_data = await self._fetch_us_data(session)
+                        data.update(us_data)
+                    except Exception as err:
+                        _LOGGER.error("Failed to fetch ALDI US data: %s", err)
+                        raise UpdateFailed(f"Failed to fetch ALDI US: {err}") from err
                 # International (AT, CH, HU, IT, SI)
-                if self.country != COUNTRY_DE:
+                elif self.country != COUNTRY_DE:
                     try:
                         country_data = await self._fetch_publitas_country_data(session)
                         data.update(country_data)
@@ -530,6 +552,142 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         except (AttributeError, KeyError, TypeError, ValueError) as e:
             _LOGGER.warning("Failed to parse Nuxt offers: %s", e)
             return {}
+
+    async def _fetch_us_data(self, session: aiohttp.ClientSession) -> dict[str, Any]:
+        """Fetch weekly flyer and discount data for ALDI US."""
+        _LOGGER.debug("Fetching ALDI US data (ZIP: %s)", self.zip_code)
+        url = "https://www.aldi.us/store/aldi/flyers/view/weekly"
+
+        cookies = None
+        if self.zip_code:
+            cookies = {
+                "postal_code": self.zip_code,
+                "client_postal_code": self.zip_code,
+                "default_address_postal_code": self.zip_code,
+            }
+
+        html = await self._request(session, url, return_json=False, cookies=cookies)
+
+        scripts = re.findall(
+            r"<script(?:\s+[^>]*)?>(.*?)</script\s*[^>]*>",
+            html,
+            re.DOTALL | re.IGNORECASE,
+        )
+        cache_data = None
+        for s in scripts:
+            s_clean = s.strip()
+            if s_clean.startswith("%7B") and "DocumentCache" in s_clean:
+                try:
+                    cache_data = json.loads(urllib.parse.unquote(s_clean))
+                    break
+                except Exception:
+                    pass
+            elif '"DocumentCache"' in s_clean:
+                try:
+                    cache_data = json.loads(s_clean)
+                    break
+                except Exception:
+                    pass
+
+        if not cache_data:
+            _LOGGER.warning("Could not find DocumentCache on ALDI US flyer page")
+            return {
+                "sued_discounts": [],
+                "sued_next_discounts": [],
+                "sued_preview_discounts": [],
+                "sued_valid_until": "Weekly Specials",
+                "sued_next_valid_until": "",
+                "sued_preview_valid_until": "",
+            }
+
+        items_dict = cache_data.get("Items", {})
+        prices_dict = cache_data.get("ItemPricesQuery", {})
+
+        price_map: dict[str, Any] = {}
+        for pv in prices_dict.values():
+            if isinstance(pv, dict):
+                for p_item in pv.get("itemPrices", []):
+                    item_id = p_item.get("id") or p_item.get("itemId")
+                    if item_id:
+                        price_map[item_id] = p_item
+
+        discounts: list[dict[str, Any]] = []
+        for iv in items_dict.values():
+            if isinstance(iv, dict):
+                for item in iv.get("items", []):
+                    item_id = item.get("id")
+                    name = item.get("name", "")
+                    brand = item.get("brandName", "")
+                    if brand and brand.lower() not in name.lower():
+                        title = f"{brand} {name}"
+                    else:
+                        title = name
+
+                    size = item.get("size", "")
+                    img_url = (
+                        item.get("viewSection", {}).get("itemImage", {}).get("url", "")
+                    )
+
+                    p_obj = price_map.get(item_id, {})
+                    p_vs = (
+                        p_obj.get("viewSection", {}) if isinstance(p_obj, dict) else {}
+                    )
+                    item_card = (
+                        p_vs.get("itemCard", {}) if isinstance(p_vs, dict) else {}
+                    )
+                    item_details = (
+                        p_vs.get("itemDetails", {}) if isinstance(p_vs, dict) else {}
+                    )
+
+                    price = (
+                        item_card.get("priceString")
+                        or item_details.get("priceString")
+                        or (
+                            f"${p_vs.get('priceValueString')}"
+                            if p_vs.get("priceValueString")
+                            else ""
+                        )
+                    )
+
+                    full_price = (
+                        item_card.get("plainFullPriceString")
+                        or item_card.get("fullPriceString")
+                        or ""
+                    )
+                    unit_price = item_details.get("pricePerUnitString") or ""
+
+                    base_parts = []
+                    if size:
+                        base_parts.append(size)
+                    if unit_price:
+                        base_parts.append(f"({unit_price})")
+                    elif full_price:
+                        base_parts.append(f"(reg. {full_price})")
+                    base_price = " ".join(base_parts)
+
+                    discounts.append(
+                        {
+                            ATTR_DISCOUNT_TITLE: title,
+                            ATTR_DISCOUNT_PRICE: price,
+                            ATTR_BASE_PRICE: base_price,
+                            ATTR_PICTURE: img_url,
+                            ATTR_CATEGORY: "Weekly Specials",
+                        }
+                    )
+
+        self.sued_current_url = url
+        valid_until_label = (
+            f"Weekly Ad ({self.zip_code})" if self.zip_code else "Weekly Ad"
+        )
+
+        return {
+            "sued_discounts": discounts,
+            "sued_next_discounts": [],
+            "sued_preview_discounts": [],
+            "sued_valid_until": valid_until_label,
+            "sued_next_valid_until": "",
+            "sued_preview_valid_until": "",
+        }
 
     async def _fetch_publitas_country_data(
         self, session: aiohttp.ClientSession

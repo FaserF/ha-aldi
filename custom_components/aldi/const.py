@@ -9,6 +9,8 @@ CONF_PRODUCT_FILTERS = "product_filters"
 CONF_REGION = "region"
 CONF_UPDATE_INTERVAL = "update_interval"
 
+CONF_ZIP_CODE = "zip_code"
+
 # Defaults
 DEFAULT_UPDATE_INTERVAL = 24  # hours
 MIN_UPDATE_INTERVAL = 1  # hours
@@ -41,3 +43,4 @@ COUNTRY_CH = "ch"
 COUNTRY_HU = "hu"
 COUNTRY_IT = "it"
 COUNTRY_SI = "si"
+COUNTRY_US = "us"

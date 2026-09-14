@@ -8,6 +8,12 @@
           "country": "Country"
         }
       },
+      "zip": {
+        "description": "Enter your 5-digit US ZIP code to fetch local ALDI US weekly ads and specials.",
+        "data": {
+          "zip_code": "ZIP Code"
+        }
+      },
       "region": {
         "description": "Select the ALDI regions you want to track.",
         "data": {
@@ -18,6 +24,9 @@
         "title": "ALDI region found",
         "description": "Based on your Home Assistant location, the following ALDI region was detected:\n\n**{region_label}**\n\nWould you like to add it?"
       }
+    },
+    "error": {
+      "invalid_zip": "Please enter a valid 5-digit US ZIP code (e.g. 60174)."
     },
     "abort": {
       "already_configured": "ALDI/Hofer weekly offers are already configured."
@@ -42,7 +51,8 @@
         "ch": "Switzerland (Suisse / ALDI)",
         "hu": "Hungary (Magyarország / ALDI)",
         "it": "Italy (Italia / ALDI)",
-        "si": "Slovenia (Slovenija / HOFER)"
+        "si": "Slovenia (Slovenija / HOFER)",
+        "us": "United States (ALDI US)"
       }
     },
     "region": {
