@@ -28,11 +28,12 @@ Check out our full collection of Home Assistant supermarket integrations and the
 
 | Repository | Description |
 | :--- | :--- |
-| 🏷️ [**Grocery Deals (ha-grocery-deals)**](https://github.com/FaserF/ha-grocery-deals) | **Smart multi-store price comparison hub (aggregates all 5 integrations)** |
+| 🏷️ [**Grocery Deals (ha-grocery-deals)**](https://github.com/FaserF/ha-grocery-deals) | **Smart multi-store price comparison hub (aggregates all integrations)** |
 | 🔴 [**ha-rewe**](https://github.com/FaserF/ha-rewe) | REWE weekly offers, bonus points, coupons & product filters |
 | 🟡 [**ha-edeka**](https://github.com/FaserF/ha-edeka) | EDEKA weekly offers, discounts & PAYBACK card |
 | 🔵 [**ha-lidl**](https://github.com/FaserF/ha-lidl) | Lidl Plus weekly offers, coupons & digital receipts |
 | 🔴 [**ha-norma**](https://github.com/FaserF/ha-norma) | Norma weekly store discounts & flyer offers |
+| 🔴 [**ha-penny**](https://github.com/FaserF/ha-penny) | Penny weekly store discounts, coupons & flyer offers |
 
 ---
 
@@ -100,6 +101,16 @@ It groups all sensors under a single branded device entity per country, and impl
 [![PayPal](https://img.shields.io/badge/Donate%20via-PayPal-%2300457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/FaserF)
 
 </div>
+
+---
+
+## 🔌 Recommended Hardware & Ecosystem Links
+
+| Device / Service | Integration Use Case | Link |
+| :--- | :--- | :--- |
+| **Home Assistant Green & Offizielle Smart-Home-Hardware** | Empfohlene Hardware-Basis für lokale Home Assistant Integrationen | [Offizielle Geräte-Seite →](https://fabiseitz.de/go/ha-hardware) |
+| **Home Assistant Connect ZBT-1 (Zigbee / Thread)** | Lokales Zigbee2MQTT, ZHA & Matter-over-Thread Funknetz | [Offizielle Geräte-Seite →](https://fabiseitz.de/go/ha-zigbee) |
+
 
 ---
 
