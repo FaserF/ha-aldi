@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 import voluptuous as vol
 from homeassistant import config_entries
@@ -160,7 +160,7 @@ class AldiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=schema,
+            data_schema=cast(Any, schema),
             errors=errors,
         )
 
@@ -196,7 +196,7 @@ class AldiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="zip",
-            data_schema=schema,
+            data_schema=cast(Any, schema),
             errors=errors,
         )
 
@@ -244,7 +244,7 @@ class AldiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="region",
-            data_schema=schema,
+            data_schema=cast(Any, schema),
             errors=errors,
         )
 
@@ -296,4 +296,6 @@ class AldiOptionsFlowHandler(config_entries.OptionsFlow):
             }
         )
 
-        return self.async_show_form(step_id="init", data_schema=options_schema)
+        return self.async_show_form(
+            step_id="init", data_schema=cast(Any, options_schema)
+        )

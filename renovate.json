@@ -7,6 +7,10 @@
     {
       "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
       "automerge": true
+    },
+    {
+      "matchFileNames": ["custom_components/*/manifest.json"],
+      "enabled": false
     }
   ]
 }

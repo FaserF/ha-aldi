@@ -14,6 +14,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
+    ATTR_BRAND,
     ATTR_DISCOUNTS,
     ATTR_VALID_DATE,
     COUNTRY_AT,
@@ -688,9 +689,15 @@ class AldiProductFilterSensor(
         matches: list[dict[str, Any]] = []
         for item in discounts:
             prod_name = str(item.get("product", "")).lower()
+            brand_name = str(item.get(ATTR_BRAND, "")).lower()
             cat_name = str(item.get("category", "")).lower()
             base_price = str(item.get("base_price", "")).lower()
-            if term in prod_name or term in cat_name or term in base_price:
+            if (
+                term in prod_name
+                or term in brand_name
+                or term in cat_name
+                or term in base_price
+            ):
                 matches.append(item)
         return matches
 
@@ -767,6 +774,7 @@ class AldiProductFilterSensor(
             "best_price": best_match.get("price") if best_match else None,
             "base_price": best_match.get("base_price") if best_match else None,
             "product_title": best_match.get("product") if best_match else None,
+            "brand": best_match.get(ATTR_BRAND) if best_match else None,
             "category": best_match.get("category") if best_match else None,
             "valid_until": valid_until,
             "picture_link": best_match.get("picture_link") if best_match else None,

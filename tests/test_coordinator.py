@@ -143,6 +143,68 @@ async def test_coordinator_fetch_nord_success(hass: HomeAssistant) -> None:
         assert res["nord_discounts"][0]["picture_link"] == "https://ipaper.com/1.png"
 
 
+async def test_coordinator_fetch_nord_superscript_prices_and_brand(
+    hass: HomeAssistant,
+) -> None:
+    """Test ALDI Nord reversed-superscript prices and brand extraction (#15)."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_COUNTRY: "de", CONF_REGION: REGION_NORD},
+        options={},
+    )
+    entry.add_to_hass(hass)
+
+    coordinator = AldiDataUpdateCoordinator(hass, entry)
+
+    enrichments_url = "https://ipaper.com/data/Enrichments.json"
+    next_data_html = (
+        '<script id="__NEXT_DATA__">{"props": {"pageProps": {"page": {"link": '
+        '"https://magazine.aldi-nord.de/cw42/"}, "apiData": '
+        '"[[\\"LEAFLET_IPAPER_STRUCTURE_GET\\",{\\"res\\":[{\\"pageNumber\\":\\"8\\",'
+        '\\"url\\":\\"https://ipaper.com/8.png\\"}]}]]"}}}</script>'
+    )
+    magazine_html = (
+        '"pageTexts": ["AUS DER TIEFKÜHLUNG! IGLO Rahmspinat XXL 1-kg-Beutel 29 ** 1. '
+        'FROSTA Fertiggericht XXL 900-g-Packung 49 ** 3."],'
+        f' "{enrichments_url}"'
+    )
+    enrichments_json = {
+        "enrichments": [
+            {
+                "type": 13,
+                "name": "Rahmspinat XXL",
+                "pageIndex": 0,
+            },
+            {
+                "type": 13,
+                "name": "Fertiggericht XXL",
+                "pageIndex": 0,
+            },
+        ]
+    }
+
+    async def mock_request_helper(session, url, return_json=True):
+        if "aldi-aktuell" in url or "aldi-vorschau" in url or "aldi-ausblick" in url:
+            return next_data_html
+        if "Enrichments" in url:
+            return enrichments_json
+        return magazine_html
+
+    with (
+        patch.object(coordinator, "_request", side_effect=mock_request_helper),
+        patch("asyncio.sleep"),
+    ):
+        res = await coordinator._async_update_data()
+        assert len(res["nord_discounts"]) == 2
+        first, second = res["nord_discounts"]
+        assert first["brand"] == "IGLO"
+        assert first["product"] == "IGLO Rahmspinat XXL"
+        assert first["price"] == "1.29"
+        assert second["brand"] == "FROSTA"
+        assert second["product"] == "FROSTA Fertiggericht XXL"
+        assert second["price"] == "3.49"
+
+
 async def test_coordinator_backoff_on_blocking(hass: HomeAssistant) -> None:
     """Test that coordinator correctly triggers back-off on 403 or 429 response codes."""
     entry = MockConfigEntry(

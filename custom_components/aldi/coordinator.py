@@ -20,6 +20,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     ATTR_BASE_PRICE,
+    ATTR_BRAND,
     ATTR_CATEGORY,
     ATTR_DISCOUNT_PRICE,
     ATTR_DISCOUNT_TITLE,
@@ -41,6 +42,12 @@ from .const import (
     REGION_BOTH,
     REGION_NORD,
     REGION_SUED,
+)
+from .nord_parser import (
+    extract_nord_brand,
+    extract_nord_prices,
+    infer_nord_category,
+    make_lenient_regex,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -499,8 +506,9 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             for p in all_products:
                 title = p["name"]
-                if p.get("brandName"):
-                    title = f"{p['brandName']} {title}"
+                brand = str(p.get("brandName") or "").strip()
+                if brand and brand.lower() not in title.lower():
+                    title = f"{brand} {title}"
 
                 price_info = p.get("price") or {}
                 price = price_info.get("amountRelevantDisplay")
@@ -520,13 +528,15 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                             "{slug}", p.get("urlSlugText", "")
                         )
 
-                prod_data = {
+                prod_data: dict[str, Any] = {
                     ATTR_DISCOUNT_TITLE: title,
                     ATTR_DISCOUNT_PRICE: price,
                     ATTR_BASE_PRICE: desc,
                     ATTR_PICTURE: photo_url,
                     ATTR_CATEGORY: "Angebote",
                 }
+                if brand:
+                    prod_data[ATTR_BRAND] = brand
 
                 sale_date_str = p.get("onSaleDateDisplay") or ""
                 date_match = re.search(r"(\d{2})\.(\d{2})\.(\d{4})", sale_date_str)
@@ -665,15 +675,16 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         base_parts.append(f"(reg. {full_price})")
                     base_price = " ".join(base_parts)
 
-                    discounts.append(
-                        {
-                            ATTR_DISCOUNT_TITLE: title,
-                            ATTR_DISCOUNT_PRICE: price,
-                            ATTR_BASE_PRICE: base_price,
-                            ATTR_PICTURE: img_url,
-                            ATTR_CATEGORY: "Weekly Specials",
-                        }
-                    )
+                    offer_item: dict[str, Any] = {
+                        ATTR_DISCOUNT_TITLE: title,
+                        ATTR_DISCOUNT_PRICE: price,
+                        ATTR_BASE_PRICE: base_price,
+                        ATTR_PICTURE: img_url,
+                        ATTR_CATEGORY: "Weekly Specials",
+                    }
+                    if brand:
+                        offer_item[ATTR_BRAND] = brand
+                    discounts.append(offer_item)
 
         self.sued_current_url = url
         valid_until_label = (
@@ -906,17 +917,18 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                                 )
                                 photo_url = f"{photo_prefix}{photo_url}"
 
-                            discounts.append(
-                                {
-                                    ATTR_DISCOUNT_TITLE: title,
-                                    ATTR_DISCOUNT_PRICE: disc_price,
-                                    ATTR_BASE_PRICE: f"{desc} (orig: {orig_price})"
-                                    if orig_price
-                                    else desc,
-                                    ATTR_PICTURE: photo_url,
-                                    ATTR_CATEGORY: prod.get("productType", "Angebote"),
-                                }
-                            )
+                            offer_item: dict[str, Any] = {
+                                ATTR_DISCOUNT_TITLE: title,
+                                ATTR_DISCOUNT_PRICE: disc_price,
+                                ATTR_BASE_PRICE: f"{desc} (orig: {orig_price})"
+                                if orig_price
+                                else desc,
+                                ATTR_PICTURE: photo_url,
+                                ATTR_CATEGORY: prod.get("productType", "Angebote"),
+                            }
+                            if brand:
+                                offer_item[ATTR_BRAND] = brand
+                            discounts.append(offer_item)
             except (aiohttp.ClientError, KeyError, TypeError, ValueError) as e:
                 _LOGGER.warning("Failed to fetch SÜD hotspots page %s: %s", page, e)
                 continue
@@ -1023,176 +1035,69 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         discounts = []
 
         # 4. Perform window-based lenient matching on pageTexts
-        def make_lenient_regex(name: str) -> str:
-            clean = re.sub(r"[^a-zA-Z0-9äöüÄÖÜß]", "", name)
-            pattern = r""
-            for char in clean:
-                pattern += re.escape(char) + r"[\s\u00ad\u2009-]*"
-            return pattern
-
-        def _infer_nord_category(enrichment: dict[str, Any], window: str) -> str:
-            """Return a category string for an ALDI NORD enrichment item.
-
-            Tier 1 – field from the enrichment JSON (future-proof if ALDI ever
-                      adds explicit category data to their API).
-            Tier 2 – keyword matching on the surrounding page-text window.
-            Tier 3 – fallback 'Angebote'.
-            """
-            # Tier 1: explicit field in enrichment object
-            for field in ("category", "productType", "productCategory", "type_label"):
-                val = enrichment.get(field)
-                if val and isinstance(val, str) and val not in {"product", "13"}:
-                    return val.strip()
-
-            # Tier 2: keyword matching (case-insensitive, longest match wins)
-            _KEYWORD_CATEGORIES: list[tuple[str, str]] = [
-                # Food – fresh
-                (
-                    r"obst|gem[üu]se|salat|apfel|tomate|gurke|paprika|zitrone|orange|banane|erdbeere",
-                    "Obst & Gemüse",
-                ),
-                (
-                    r"fleisch|wurst|aufschnitt|schinken|salami|hackfleisch|steak|schnitzel|h[äa]hnchen|gefl[üu]gel",
-                    "Fleisch & Wurst",
-                ),
-                (
-                    r"fisch|lachs|forelle|thunfisch|garnele|meeresfrüchte",
-                    "Fisch & Meeresfrüchte",
-                ),
-                (
-                    r"milch|k[äa]se|joghurt|quark|sahne|butter|mozzarella",
-                    "Milch & Käse",
-                ),
-                (
-                    r"brot|br[öo]tchen|toast|backwaren|kuchen|keks|geb[äa]ck",
-                    "Brot & Backwaren",
-                ),
-                (
-                    r"tiefk[üu]hl|tk-|tiefgek[üu]hlt|pizza|eis(becher|würfel|creme)?",
-                    "Tiefkühl",
-                ),
-                # Beverages
-                (
-                    r"getr[äa]nk|wasser|saft|limo|cola|bier|wein|sekt|kaffee|tee|kakao",
-                    "Getränke",
-                ),
-                # Pantry
-                (
-                    r"nudel|pasta|reis|mehl|zucker|[öo]l|essig|soße|sauce|gew[üu]rz|mayonnaise|ketchup|senf",
-                    "Vorrat",
-                ),
-                (
-                    r"müsli|cornflakes|fr[üu]hst[üu]ck|marmelade|honig|aufstrich",
-                    "Frühstück",
-                ),
-                (
-                    r"schokolade|s[üu][ßs]igkeiten|bonbon|gummi|chips|snack|popcorn|n[üu]sse",
-                    "Süßwaren & Snacks",
-                ),
-                (r"babynahrung|windel|baby", "Baby"),
-                (
-                    r"tiernahrung|hundefutter|katzenfutter|tierfutter|streu",
-                    "Tierbedarf",
-                ),
-                # Non-food
-                (
-                    r"waschmittel|spülmittel|reiniger|putzmittel|hygiene",
-                    "Haushalt & Reinigung",
-                ),
-                (
-                    r"shampoo|duschgel|deo|seife|kosmetik|creme|pflege|zahnb[üu]rste|zahnpasta",
-                    "Körperpflege",
-                ),
-                (
-                    r"werkzeug|bohrer|s[äa]ge|hammer|schraube|klebeband|akku",
-                    "Werkzeug & Baumarkt",
-                ),
-                (r"garten|pflanze|erde|d[üu]nger|blume|balkon|terrasse", "Garten"),
-                (
-                    r"textil|t-shirt|hose|jacke|socken|unterw[äa]sche|schuh|kleidung",
-                    "Textilien",
-                ),
-                (
-                    r"elektronik|handy|smartphone|tablet|laptop|kopfh[öo]rer|ladekabel|usb|hdmi",
-                    "Elektronik",
-                ),
-                (r"spielzeug|lego|puppe|brettspiel|spiel", "Spielzeug"),
-                (
-                    r"sport|fitness|fahrrad|helm|camping|outdoor|rucksack",
-                    "Sport & Freizeit",
-                ),
-            ]
-            w_lower = window.lower()
-            for pattern, label in _KEYWORD_CATEGORIES:
-                if re.search(pattern, w_lower):
-                    return label
-
-            # Tier 3: fallback
-            return "Angebote"
-
         for pidx, products in sorted(by_page.items()):
             if pidx >= len(page_texts):
                 continue
-            text = page_texts[pidx]
+            clean_text = page_texts[pidx].replace("\u00ad", "")
 
-            positions = []
-            for p in products:
-                name = p.get("name", "")
+            non_empty_parent_ids = {
+                p.get("id")
+                for p in products
+                if not p.get("parentid")
+                and (p.get("name") or "").replace("\u00ad", "").strip()
+            }
+            seen_child_parents: set[Any] = set()
+            sorted_products = sorted(
+                products,
+                key=lambda item: (
+                    1 if item.get("parentid") else 0,
+                    item.get("menuitemIndex", 0) or 0,
+                ),
+            )
+
+            positions: list[tuple[int, int, dict[str, Any], str]] = []
+            claimed_starts: set[int] = set()
+            for p in sorted_products:
+                name = p.get("name") or ""
                 clean_name = name.replace("\u00ad", "").strip()
-                clean_text = text.replace("\u00ad", "")
+                if not clean_name:
+                    continue
+
+                parent_id = p.get("parentid")
+                if parent_id:
+                    if parent_id in non_empty_parent_ids:
+                        continue
+                    if parent_id in seen_child_parents:
+                        continue
+                    seen_child_parents.add(parent_id)
 
                 pattern = make_lenient_regex(clean_name)
-                match = re.search(pattern, clean_text, re.IGNORECASE)
-                if match:
-                    positions.append((match.start(), p, clean_name))
+                if not pattern:
+                    continue
+
+                matched_pos: tuple[int, int] | None = None
+                for match in re.finditer(pattern, clean_text, re.IGNORECASE):
+                    if match.start() not in claimed_starts:
+                        matched_pos = (match.start(), match.end())
+                        claimed_starts.add(match.start())
+                        break
+
+                if matched_pos is not None:
+                    positions.append((matched_pos[0], matched_pos[1], p, clean_name))
 
             positions.sort(key=lambda x: x[0])
 
-            for idx, (pos, p, clean_name) in enumerate(positions):
+            for idx, (pos, _name_end, p, clean_name) in enumerate(positions):
+                prev_end = positions[idx - 1][1] if idx > 0 else 0
                 end_pos = (
-                    positions[idx + 1][0] if idx + 1 < len(positions) else len(text)
+                    positions[idx + 1][0]
+                    if idx + 1 < len(positions)
+                    else len(clean_text)
                 )
-                window_text = text[pos:end_pos]
+                pre_text = clean_text[prev_end:pos]
+                window_text = clean_text[pos:end_pos]
 
-                # Price regex (excludes unit prices)
-                all_matches = list(
-                    re.finditer(r"\b\d+[\u2009\s]*[\.,][\u2009\s]*\d{2}\b", window_text)
-                )
-                valid_prices = []
-                for m in all_matches:
-                    start_idx = m.start()
-                    pre_context = window_text[
-                        max(0, start_idx - 25) : start_idx
-                    ].lower()
-                    if any(
-                        x in pre_context
-                        for x in [
-                            "kg =",
-                            "kg=",
-                            "liter =",
-                            "liter=",
-                            "l-preis",
-                            "kg-preis",
-                            "liter-preis",
-                            "l =",
-                            "l=",
-                        ]
-                    ):
-                        continue
-                    price_val = (
-                        m.group(0)
-                        .replace(" ", "")
-                        .replace("\u2009", "")
-                        .replace(",", ".")
-                    )
-                    valid_prices.append(price_val)
-
-                price = "0.00"
-                original_price = None
-                if valid_prices:
-                    price = valid_prices[0]
-                    if len(valid_prices) > 1:
-                        original_price = valid_prices[1]
+                price, original_price = extract_nord_prices(window_text)
 
                 # Unit/size description
                 desc_match = re.search(
@@ -1203,19 +1108,26 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 desc = desc_match.group(0) if desc_match else ""
 
                 picture_url = page_images.get(pidx, "")
-                category = _infer_nord_category(p, window_text)
-
-                discounts.append(
-                    {
-                        ATTR_DISCOUNT_TITLE: clean_name,
-                        ATTR_DISCOUNT_PRICE: price,
-                        ATTR_BASE_PRICE: f"{desc} (orig: {original_price})"
-                        if original_price
-                        else desc,
-                        ATTR_PICTURE: picture_url,
-                        ATTR_CATEGORY: category,
-                    }
+                category = infer_nord_category(p, window_text)
+                brand = extract_nord_brand(p, pre_text, clean_name)
+                title = (
+                    f"{brand} {clean_name}"
+                    if brand and brand.lower() not in clean_name.lower()
+                    else clean_name
                 )
+
+                offer_item: dict[str, Any] = {
+                    ATTR_DISCOUNT_TITLE: title,
+                    ATTR_DISCOUNT_PRICE: price,
+                    ATTR_BASE_PRICE: f"{desc} (orig: {original_price})"
+                    if original_price
+                    else desc,
+                    ATTR_PICTURE: picture_url,
+                    ATTR_CATEGORY: category,
+                }
+                if brand:
+                    offer_item[ATTR_BRAND] = brand
+                discounts.append(offer_item)
 
         # Parse global validity dates
         valid_until_str = ""

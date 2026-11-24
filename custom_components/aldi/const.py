@@ -25,6 +25,7 @@ DISCOVERY_NORD_LAT_BOUNDARY = 51.5  # roughly Kassel / Dortmund line
 # Sensor attributes
 ATTR_DISCOUNTS = "discounts"
 ATTR_DISCOUNT_TITLE = "product"
+ATTR_BRAND = "brand"
 ATTR_DISCOUNT_PRICE = "price"
 ATTR_BASE_PRICE = "base_price"
 ATTR_PICTURE = "picture_link"

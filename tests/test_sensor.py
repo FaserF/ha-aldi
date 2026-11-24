@@ -109,14 +109,14 @@ async def test_product_filter_sensor(hass: HomeAssistant) -> None:
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={CONF_REGION: REGION_BOTH},
-        options={"product_filters": ["Kaffee", "Schokolade"]},
+        options={"product_filters": ["Kaffee", "Schokolade", "Iglo"]},
     )
     entry.add_to_hass(hass)
 
     coordinator = MagicMock()
     coordinator.country = "de"
     coordinator.region = REGION_BOTH
-    coordinator.product_filters = ["Kaffee", "Schokolade"]
+    coordinator.product_filters = ["Kaffee", "Schokolade", "Iglo"]
     coordinator.sued_current_url = "https://sued-url"
     coordinator.nord_current_url = "https://nord-url"
 
@@ -137,6 +137,14 @@ async def test_product_filter_sensor(hass: HomeAssistant) -> None:
                 "picture_link": "https://img/kaffee2.png",
             },
             {
+                "product": "Rahmspinat XXL",
+                "brand": "IGLO",
+                "price": "1.99 €",
+                "base_price": "1-kg-Beutel",
+                "category": "Tiefkühl",
+                "picture_link": "https://img/spinat.png",
+            },
+            {
                 "product": "Gouda Käse",
                 "price": "1.99 €",
                 "base_price": "400g",
@@ -153,8 +161,8 @@ async def test_product_filter_sensor(hass: HomeAssistant) -> None:
     await async_setup_entry(hass, entry, async_add_entities)
 
     created_sensors = async_add_entities.call_args[0][0]
-    # 12 standard sensors + 2 filter sensors
-    assert len(created_sensors) == 14
+    # 12 standard sensors + 3 filter sensors
+    assert len(created_sensors) == 15
 
     # Test Kaffee filter sensor (should match 2 items, best price 3.99 €)
     kaffee_sensor = created_sensors[12]
@@ -168,6 +176,7 @@ async def test_product_filter_sensor(hass: HomeAssistant) -> None:
     assert attrs["best_price"] == "3.99 €"
     assert attrs["base_price"] == "500g (7.98/kg)"
     assert attrs["product_title"] == "Kaffee Mild"
+    assert attrs["brand"] is None
     assert attrs["category"] == "Getränke"
     assert attrs["valid_until"] == "13.7"
     assert attrs["picture_link"] == "https://img/kaffee2.png"
@@ -186,6 +195,7 @@ async def test_product_filter_sensor(hass: HomeAssistant) -> None:
     assert schoko_attrs["best_price"] is None
     assert schoko_attrs["base_price"] is None
     assert schoko_attrs["product_title"] is None
+    assert schoko_attrs["brand"] is None
     assert schoko_attrs["category"] is None
     assert schoko_attrs["picture_link"] is None
     assert schoko_attrs["matches"] == []
@@ -193,3 +203,13 @@ async def test_product_filter_sensor(hass: HomeAssistant) -> None:
         schoko_attrs["attribution"]
         == "Data provided by ALDI SÜD & NORD digital brochures"
     )
+
+    # Test Iglo filter sensor (matches by brand attribute)
+    iglo_sensor = created_sensors[14]
+    assert isinstance(iglo_sensor, AldiProductFilterSensor)
+    assert iglo_sensor.native_value == "1.99 €"
+    iglo_attrs = iglo_sensor.extra_state_attributes
+    assert iglo_attrs["on_sale"] is True
+    assert iglo_attrs["match_count"] == 1
+    assert iglo_attrs["product_title"] == "Rahmspinat XXL"
+    assert iglo_attrs["brand"] == "IGLO"
