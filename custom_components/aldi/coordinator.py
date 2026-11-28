@@ -1101,7 +1101,7 @@ class AldiDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
                 # Unit/size description
                 desc_match = re.search(
-                    r"\b\d+[- ]*(?:g|ml|kg|l|L|Fl\.)[- ]*(?:Packung|Becher|Beutel|Glas|Flasche|Stück|Schale)?\b",
+                    r"\b\d+(?:\s*[xX×]\s*\d+)?[- ]*(?:g|ml|kg|l|L|Fl\.)[- ]*(?:Packung|Becher|Beutel|Glas|Flasche|Stück|Schale)?\b",
                     window_text,
                     re.IGNORECASE,
                 )

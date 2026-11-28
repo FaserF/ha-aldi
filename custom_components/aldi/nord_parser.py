@@ -154,10 +154,14 @@ _KEYWORD_CATEGORIES: list[tuple[str, str]] = [
 
 def make_lenient_regex(name: str) -> str:
     """Build a whitespace/soft-hyphen tolerant regex for matching product names."""
-    clean = re.sub(r"[^a-zA-Z0-9äöüÄÖÜß]", "", name)
+    # Keep all unicode word characters (ae/oe/aa, accented letters, digits) so
+    # names like "Kærgården", "Caffè Crema" or "Crème brûlée" still match the
+    # OCR text, and allow "/", "-" and thin/soft spaces between characters so
+    # names like "Tee-/Leberwurst" match as well.
+    clean = re.sub(r"[^\w]", "", name, flags=re.UNICODE)
     if not clean:
         return ""
-    return "".join(re.escape(char) + r"[\s\u00ad\u2009-]*" for char in clean)
+    return "".join(re.escape(char) + r"[\s\u00ad\u2009/\-]*" for char in clean)
 
 
 def extract_nord_prices(window_text: str) -> tuple[str, str | None]:
